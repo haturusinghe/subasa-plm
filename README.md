@@ -1,1 +1,1 @@
-# subasa-llm
+# Subasa - Adapting Language Models for Low Resourced Offensive Language Detection in Sinhala
