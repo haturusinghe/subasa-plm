@@ -52,8 +52,18 @@ def parse_args():
     return parser.parse_args()
 
 def train(args):
-    # TODO : Add dataset loading and tokenization
-    pass
+    tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
+    tokenizer = add_tokens_to_tokenizer(args, tokenizer)
+
+    if args.intermediate == 'rp':
+        model = XLMRobertaForTokenClassification.from_pretrained(args.pretrained_model)
+        emb_layer = None
+    elif args.intermediate == 'mrp':
+        model = XLMRobertaCustomForTCwMRP.from_pretrained(args.pretrained_model) # TODO : Create this custom model, refer to BertForTCwMRP class in MRP repo
+        emb_layer = nn.Embedding(args.n_tk_label, 768)
+        model.config.output_attentions=True
+    
+    model.resize_token_embeddings(len(tokenizer))
 
 if __name__ == '__main__':
     args = parse_args()
