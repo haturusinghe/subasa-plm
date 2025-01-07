@@ -3,20 +3,13 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
 import torch_optimizer as optim
+from torch.nn import CrossEntropyLoss 
 
 from transformers import XLMRobertaTokenizer, XLMRobertaModel, XLMRobertaConfig,XLMRobertaForTokenClassification, XLMRobertaForSequenceClassification
+from transformers.modeling_outputs import BaseModelOutputWithPoolingAndCrossAttentions, TokenClassifierOutput
 
-import argparse
-import logging
-from pathlib import Path
-import gc
 import numpy as np
-import os
-import sys
-from tqdm import tqdm
-import time
-from datetime import datetime
-import random
+
 
 class XLMRobertaCustomForTCwMRP(XLMRobertaForTokenClassification):
     def __init__(self, config):
