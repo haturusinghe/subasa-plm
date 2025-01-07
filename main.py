@@ -23,6 +23,8 @@ from src.config.config import ModelConfig
 from src.utils.logging_utils import setup_logging
 from src.utils.helpers import get_device, add_tokens_to_tokenizer
 
+from src.models.custom_models import XLMRobertaCustomForTCwMRP
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Subasa - Adapting Language Models for Low Resourced Offensive Language Detection in Sinhala')
 
