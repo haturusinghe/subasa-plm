@@ -47,6 +47,10 @@ class SOLDDataset(Dataset):
                     if d['label'] == self.label_list[i]:
                         self.label_count[i] += 1
 
+        if args.check_errors == True:
+            # this flag is to make the datasets very small to quickly run the training to see errors
+            self.dataset = self.dataset[:100]
+
         if args.intermediate:
             rm_idxs = []
             for idx, d in enumerate(self.dataset):
