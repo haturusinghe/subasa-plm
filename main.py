@@ -30,6 +30,7 @@ from src.utils.prefinetune_utils import prepare_gts, make_masked_rationale_label
 from src.models.custom_models import XLMRobertaCustomForTCwMRP
 from src.dataset.dataset import SOLDDataset
 
+import wandb
 
 def set_seed(seed):
     torch.manual_seed(seed)
@@ -71,12 +72,32 @@ def parse_args():
 
     parser.add_argument('--check_errors', default=False, help='check errors in the dataset', type=bool)
 
+    # Weights & Biases config
+    parser.add_argument('--wandb_project', type=str, default='subasa-llm', help='Weights & Biases project name')
+
+
     return parser.parse_args()
 
 def train(args):
     # Setup logging
     logger = setup_logging()
     logger.info("Starting with args: {}".format(args))
+
+    # Initialize wandb
+    wandb.init(
+        project=args.wandb_project,
+        config={
+            "learning_rate": args.lr,
+            "epochs": args.epochs,
+            "batch_size": args.batch_size,
+            "model": args.pretrained_model,
+            "intermediate_task": args.intermediate,
+            "n_tk_label": args.n_tk_label,
+            "mask_ratio": args.mask_ratio,
+            "seed": args.seed,
+        },
+        name=args.exp_name
+    )
 
     # Set seed
     set_seed(args.seed)
@@ -159,6 +180,13 @@ def train(args):
             optimizer.step()
             get_tr_loss.add(loss)
 
+            # Log training metrics
+            wandb.log({
+                "train/loss": loss.item(),
+                "train/learning_rate": optimizer.param_groups[0]['lr'],
+                "epoch": epoch,
+            })
+
             # validation model during training
             if i == 0 or (i+1) % dyanamic_val_int == 0:
                 _, val_loss, val_time, acc, f1 = evaluate(args, model, val_dataloader, tokenizer, emb_layer, mlb)
@@ -187,6 +215,22 @@ def train(args):
                     log.write("* acc about masked: {} | f1 about masked: {}\n".format(acc[1], f1[1]))
                 log.write('\n')
 
+                # Log validation metrics
+                metrics = {
+                    "val/loss": val_loss,
+                    "val/accuracy": acc[0],
+                    "val/f1": f1[0],
+                    "val/time": val_time,
+                }
+                
+                if args.intermediate == 'mrp':
+                    metrics.update({
+                        "val/masked_accuracy": acc[1],
+                        "val/masked_f1": f1[1]
+                    })
+                
+                wandb.log(metrics)
+
                 save_checkpoint(args, val_losses, emb_layer, model)
 
             if args.waiting > args.patience:
@@ -196,6 +240,7 @@ def train(args):
         if args.waiting > args.patience:
             break
     
+    wandb.finish()
     log.close()
 
 
