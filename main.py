@@ -95,6 +95,11 @@ def train(args):
     val_dataset = SOLDDataset(args, 'val')
     val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
 
+    get_tr_loss = GetLossAverage()
+    mlb = MultiLabelBinarizer()
+
+    
+
 if __name__ == '__main__':
     args = parse_args()
     args.test = False
