@@ -25,3 +25,22 @@ def encode(data):
 
 def decode(data):
     return le.inverse_transform(data)
+
+def get_token_rationale(tokenizer, text, rationale, id):
+    """
+    # Example usage
+    text = "good movie"              # Input words
+    rationale = [1, 0]               # Rationale per word
+    # If "good" gets tokenized to ["go", "##od"]
+    # Output would be: [1, 1, 0]         # Rationale mapped to each token
+    """
+    text_token = tokenizer.tokenize(' '.join(text))
+    assert len(text) == len(rationale), '[!] len(text) != len(rationale) | {} != {}\n{}\n{}'.format(len(text), len(rationale), text, rationale)
+    
+    rat_token = []
+    for t, r in zip(text, rationale):
+        token = tokenizer.tokenize(t)
+        rat_token += [r]*len(token)
+
+    assert len(text_token) == len(rat_token), "#token != #target rationales of {}".format(id)
+    return rat_token
