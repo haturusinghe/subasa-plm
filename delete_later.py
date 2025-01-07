@@ -5,7 +5,7 @@ from datasets import load_dataset
 from sklearn.model_selection import train_test_split
 from src.utils.helpers import encode
 
-from config import HUGGINGFACE_API_TOKEN, WANDB_API_KEY
+from config import HF_TOKEN, WANDB_API_KEY
 
 
 ds = load_dataset("sinhala-nlp/SOLD")
