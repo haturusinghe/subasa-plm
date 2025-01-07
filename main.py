@@ -69,6 +69,13 @@ def train(args):
     
     model.resize_token_embeddings(len(tokenizer))
 
+    # Define dataloader
+    train_dataset = SSOLDDataset(args, 'train') # TODO : Implement SOLDDataset Class in src/data/dataset.py
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    
+    val_dataset = SOLDDataset(args, 'val') # TODO : Implement SOLDDataset Class in src/data/dataset.py
+    val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
+
 if __name__ == '__main__':
     args = parse_args()
     args.test = False
