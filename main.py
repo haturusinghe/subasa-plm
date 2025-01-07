@@ -257,6 +257,44 @@ def train_mrp(args):
 
 
 
+def test_mrp(args):
+    tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
+    model = XLMRobertaForTokenClassification.from_pretrained(args.model_path) 
+    tokenizer = add_tokens_to_tokenizer(args, tokenizer)
+    
+    test_dataset = SOLDDataset(args, 'test')
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+    
+    mlb = MultiLabelBinarizer()
+    model.to(args.device)
+    log = open(os.path.join(args.dir_result, 'test_res.txt'), 'a')
+    
+    losses, loss_avg, time_avg, acc, f1 = evaluate(args, model, test_dataloader, tokenizer, None, mlb)
+
+    print("\nCheckpoint: ", args.model_path)
+    print("Loss_avg: {} / min: {} / max: {} | Consumed_time: {}".format(loss_avg, min(losses), max(losses), time_avg))
+    print("Acc: {} | F1: {} \n".format(acc[0], f1[0]))
+
+    log.write("Checkpoint: {} \n".format(args.model_path))
+    log.write("Loss_avg: {} / min: {} / max: {} | Consumed_time: {} \n".format(loss_avg, min(losses), max(losses), time_avg))
+    log.write("Acc: {} | F1: {} \n".format(acc[0], f1[0]))
+
+    # Log validation metrics
+    metrics = {
+        "test/Loss_avg": loss_avg,
+        "test/Loss_min": min(losses),
+        "test/Loss_max": max(losses),
+        "test/accuracy": acc[0],
+        "test/f1": f1[0],
+        "test/time": time_avg,
+    }
+    # log the path of the checkpoint
+    metrics.update({"test/checkpoint": args.model_path})
+
+    
+    wandb.log(metrics)
+
+    log.close()
     
 
 if __name__ == '__main__':
