@@ -98,6 +98,13 @@ def train(args):
     get_tr_loss = GetLossAverage()
     mlb = MultiLabelBinarizer()
 
+    if args.intermediate == 'mrp':
+        optimizer = optim.RAdam(list(emb_layer.parameters())+list(model.parameters()), lr=args.lr, betas=(0.9, 0.99))
+        emb_layer.to(args.device)
+        emb_layer.train()
+    else:
+        optimizer = optim.RAdam(model.parameters(), lr=args.lr, betas=(0.9, 0.99))
+    
     
 
 if __name__ == '__main__':
