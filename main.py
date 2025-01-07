@@ -47,40 +47,40 @@ def parse_args():
 
     return parser.parse_args()
 
-def main():
-    # Setup logging
-    logger = setup_logging()
-    logger.info("Starting training pipeline")
+# def main():
+#     # Setup logging
+#     logger = setup_logging()
+#     logger.info("Starting training pipeline")
 
-    # Parse arguments
-    args = parse_args()
+#     # Parse arguments
+#     args = parse_args()
 
-    # Create configuration
-    config = ModelConfig(
-        model_name=args.model_name,
-        max_length=args.max_length,
-        batch_size=args.batch_size,
-        learning_rate=args.learning_rate,
-        epochs=args.epochs,
-        output_dir=args.output_dir
-    )
-
-
-
-    try:
-        # Train the model
-        logger.info("Starting training")
+#     # Create configuration
+#     config = ModelConfig(
+#         model_name=args.model_name,
+#         max_length=args.max_length,
+#         batch_size=args.batch_size,
+#         learning_rate=args.learning_rate,
+#         epochs=args.epochs,
+#         output_dir=args.output_dir
+#     )
 
 
-        # Evaluate the model
-        logger.info("Starting evaluation")
 
-        # Log results
-        logger.info("Classification Report:")
+#     try:
+#         # Train the model
+#         logger.info("Starting training")
 
-    except Exception as e:
-        logger.error(f"An error occurred: {str(e)}")
-        raise
+
+#         # Evaluate the model
+#         logger.info("Starting evaluation")
+
+#         # Log results
+#         logger.info("Classification Report:")
+
+#     except Exception as e:
+#         logger.error(f"An error occurred: {str(e)}")
+#         raise
 
 if __name__ == '__main__':
     args = parse_args()
@@ -90,7 +90,7 @@ if __name__ == '__main__':
     lm = '-'.join(args.pretrained_model.split('-')[:-1])
 
     now = datetime.now()
-    args.exp_date = now.strftime('%d%m%Y-%H%M')
+    args.exp_date = (now.strftime('%d%m%Y-%H%M') + '_LK')
     args.exp_name = args.exp_date + '_'+ lm + '_' + args.intermediate +  "_"  + str(args.lr) + "_" + str(args.batch_size) + "_" + str(args.val_int)
     
     dir_result = os.path.join("pre_finetune", args.exp_name)
@@ -104,5 +104,7 @@ if __name__ == '__main__':
 
     gc.collect()
     torch.cuda.empty_cache()
+
+    print(args)
 
     # train(args)
