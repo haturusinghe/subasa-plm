@@ -155,8 +155,8 @@ def train(args):
         for i, batch in enumerate(tqdm(train_dataloader, desc="TRAINING MODEL for {} | Epoch: {}".format(args.intermediate,epoch), mininterval=0.01)):
             # each row in batch before processing is ordered as follows: (text, cls_num, final_rationales_str) : text is the tweet , cls_num is the label (0 for NOT and 1 for OFF), final_rationales_str is the rationale corresponding to the tokenized text
             in_tensor = tokenizer(batch[0], return_tensors='pt', padding=True)
-            in_tensor = in_tensor.to(args.device)
             max_len = in_tensor['input_ids'].shape[1] 
+            in_tensor = in_tensor.to(args.device)
 
             optimizer.zero_grad()
 
