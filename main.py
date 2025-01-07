@@ -4,6 +4,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch_optimizer as optim
 
+from transformers import XLMRobertaTokenizer, XLMRobertaModel, XLMRobertaConfig,XLMRobertaForTokenClassification, XLMRobertaForSequenceClassification
+
 import argparse
 import logging
 from pathlib import Path
