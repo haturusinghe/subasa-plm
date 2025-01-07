@@ -20,6 +20,8 @@ from datetime import datetime
 import random
 from sklearn.preprocessing import MultiLabelBinarizer
 
+from sklearn.metrics import f1_score, accuracy_score
+
 from src.config.config import ModelConfig
 from src.utils.logging_utils import setup_logging
 from src.utils.helpers import get_device, add_tokens_to_tokenizer, GetLossAverage, save_checkpoint
@@ -132,6 +134,7 @@ def train(args):
         for i, batch in enumerate(tqdm(train_dataloader, desc="TRAINING MODEL for {} | Epoch: {}".format(args.intermediate,epoch), mininterval=0.01)):
             # each row in batch before processing is ordered as follows: (text, cls_num, final_rationales_str) : text is the tweet , cls_num is the label (0 for NOT and 1 for OFF), final_rationales_str is the rationale corresponding to the tokenized text
             in_tensor = tokenizer(batch[0], return_tensors='pt', padding=True)
+            in_tensor = in_tensor.to(args.device)
             max_len = in_tensor['input_ids'].shape[1] 
 
             optimizer.zero_grad()
