@@ -49,7 +49,6 @@ def parse_args():
     parser.add_argument('--seed', type=int, default=42, help='random seed')
 
     # DATASET
-    # TODO : Give option to use dataset from local folder or download from huggingface
     dataset_choices = ['sold', 'hatexplain']
     parser.add_argument('--dataset', default='sold', choices=dataset_choices, help='a dataset to use')
     

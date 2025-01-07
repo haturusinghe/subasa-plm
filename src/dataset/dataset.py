@@ -16,7 +16,7 @@ from src.utils.helpers import add_tokens_to_tokenizer, get_token_rationale
 
 class SOLDDataset(Dataset):
     def __init__(self, args, mode='train'):
-        self.train_dataset_path = 'SOLD_DATASET/sold_train_split.json' #TODO : Make path dynamic ?
+        self.train_dataset_path = 'SOLD_DATASET/sold_train_split.json' 
         self.test_dataset_path = 'SOLD_DATASET/sold_test_split.json'
 
         self.label_list = ['NOT' , 'OFF']
