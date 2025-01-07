@@ -119,6 +119,13 @@ def train(args):
     val_losses = []
     val_cls_accs = []
 
+    # calculate total number of steps per epoch
+    steps_per_epoch = ceil(len(train_dataset) / args.batch_size)
+    print("Steps per epoch: ", steps_per_epoch)
+
+    # calculate validation interval based on steps per epoch
+    dyanamic_val_int = floor(steps_per_epoch / 3) - 3
+
     for epoch in range(args.epochs):
         for i, batch in enumerate(tqdm(train_dataloader, desc="TRAIN | Epoch: {}".format(epoch), mininterval=0.01)):
             # each row in batch before processing is ordered as follows: (text, cls_num, final_rationales_str) : text is the tweet , cls_num is the label (0 for NOT and 1 for OFF), final_rationales_str is the rationale corresponding to the tokenized text
