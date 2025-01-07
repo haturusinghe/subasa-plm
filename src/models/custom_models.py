@@ -20,17 +20,21 @@ class XLMRobertaCustomForTCwMRP(XLMRobertaForTokenClassification):
     
     def forward(
         self,
-        input_ids=None,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        head_mask=None,
-        inputs_embeds=None,
-        labels=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-    ):
+        input_ids: Optional[torch.LongTensor] = None,
+        attention_mask: Optional[torch.FloatTensor] = None,
+        token_type_ids: Optional[torch.LongTensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        head_mask: Optional[torch.FloatTensor] = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
+        labels: Optional[torch.LongTensor] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+    ) -> Union[Tuple[torch.Tensor], TokenClassifierOutput]:
+        r"""
+        labels (`torch.LongTensor` of shape `(batch_size, sequence_length)`, *optional*):
+            Labels for computing the token classification loss. Indices should be in `[0, ..., config.num_labels - 1]`.
+        """
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
         outputs = self.roberta(
@@ -49,14 +53,13 @@ class XLMRobertaCustomForTCwMRP(XLMRobertaForTokenClassification):
 
         sequence_output = self.dropout(sequence_output)
         logits = self.classifier(sequence_output)
-        mrp_logits = self.mrp_classifier(sequence_output)
 
         loss = None
         if labels is not None:
-            loss_fct = nn.CrossEntropyLoss()
+            # move labels to correct device to enable model parallelism
+            labels = labels.to(logits.device)
+            loss_fct = CrossEntropyLoss()
             loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
-            mrp_loss = loss_fct(mrp_logits.view(-1, 2), labels.view(-1))
-            loss = loss + mrp_loss
 
         if not return_dict:
             output = (logits,) + outputs[2:]
