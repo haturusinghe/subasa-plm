@@ -43,6 +43,7 @@ class XLMRobertaCustomForTCwMRP(XLMRobertaForTokenClassification):
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
+            label_reps=label_reps  # for masked token prediction
         )
 
         sequence_output = outputs[0]
