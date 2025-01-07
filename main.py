@@ -78,6 +78,13 @@ def parse_args():
     # sample command with all arguments :
     # python main.py --intermediate mrp --mask_ratio 0.5 --n_tk_label 2 --pretrained_model xlm-roberta-base --batch_size 16 --epochs 5 --lr 0.00005 --val_int 945 --patience 3 --seed 42 --dataset sold --wandb_project subasa-llm-session1 --check_errors True
 
+    #### FOR STEP 2 ####
+    parser.add_argument('-pf_m', '--pre_finetuned_model', required=True) # path to the pre-finetuned model
+
+    ## Explainability based metrics
+    parser.add_argument('--top_k', default=5, help='the top num of attention values to evaluate on explainable metrics')
+    parser.add_argument('--lime_n_sample', default=100, help='the num of samples for lime explainer')
+
 
     return parser.parse_args()
 
