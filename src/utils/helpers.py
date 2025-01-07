@@ -1,4 +1,5 @@
 import torch
+from sklearn.preprocessing import LabelEncoder
 
 def get_device():
     if torch.cuda.is_available():
@@ -16,3 +17,11 @@ def add_tokens_to_tokenizer(args, tokenizer):
     # print(tokenizer.all_special_ids)
     
     return tokenizer
+
+# Label Encoding
+le = LabelEncoder()
+def encode(data):
+    return le.fit_transform(data)
+
+def decode(data):
+    return le.inverse_transform(data)
