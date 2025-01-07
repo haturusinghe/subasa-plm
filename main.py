@@ -76,10 +76,13 @@ def parse_args():
     # Weights & Biases config
     parser.add_argument('--wandb_project', type=str, default='subasa-llm', help='Weights & Biases project name')
 
+    # sample command with all arguments :
+    # python main.py --intermediate mrp --mask_ratio 0.5 --n_tk_label 2 --pretrained_model xlm-roberta-base --batch_size 16 --epochs 5 --lr 0.00005 --val_int 945 --patience 3 --seed 42 --dataset sold --wandb_project subasa-llm-session1 --check_errors True
+
 
     return parser.parse_args()
 
-def train(args):
+def train_mrp(args):
     # Setup logging
     logger = setup_logging()
     logger.info("Starting with args: {}".format(args))
@@ -133,6 +136,14 @@ def train(args):
     else:
         optimizer = optim.RAdam(model.parameters(), lr=args.lr, betas=(0.9, 0.99))
     
+    # Log to wandb details about the optimizer
+    wandb.config.update({
+        "optimizer": optimizer.__class__.__name__,
+        "betas": optimizer.defaults['betas'],
+        "eps": optimizer.defaults['eps'],
+        "weight_decay": optimizer.defaults['weight_decay'],
+    })
+
     model.to(args.device)
     model.train()
 
@@ -272,5 +283,5 @@ if __name__ == '__main__':
     gc.collect()
     torch.cuda.empty_cache()
 
-    train(args)
+    train_mrp(args)
 
