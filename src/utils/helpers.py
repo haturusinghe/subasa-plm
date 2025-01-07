@@ -45,3 +45,25 @@ def get_token_rationale(tokenizer, text, rationale, id):
 
     assert len(text_token) == len(rat_token), "#token != #target rationales of {}".format(id)
     return rat_token
+
+class GetLossAverage(object):
+    """Compute average for torch.Tensor, used for loss average."""
+
+    def __init__(self):
+        self.reset()
+
+    def add(self, v):
+        count = v.data.numel()  # type -> int
+        v = v.data.sum().item()  # type -> float
+        self.n_count += count
+        self.sum += v
+
+    def reset(self):
+        self.n_count = 0
+        self.sum = 0
+
+    def aver(self):
+        res = 0
+        if self.n_count != 0:
+            res = self.sum / float(self.n_count)
+        return res
