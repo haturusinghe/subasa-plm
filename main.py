@@ -26,6 +26,16 @@ from src.utils.helpers import get_device, add_tokens_to_tokenizer
 from src.models.custom_models import XLMRobertaCustomForTCwMRP
 from src.dataset.dataset import SOLDDataset
 
+
+def set_seed(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    np.random.seed(seed)
+    random.seed(seed)
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Subasa - Adapting Language Models for Low Resourced Offensive Language Detection in Sinhala')
 
@@ -61,6 +71,9 @@ def train(args):
     # Setup logging
     logger = setup_logging()
     logger.info("Starting with args: {}".format(args))
+
+    # Set seed
+    set_seed(args.seed)
 
     tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
     tokenizer = add_tokens_to_tokenizer(args, tokenizer)
