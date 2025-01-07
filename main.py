@@ -105,6 +105,23 @@ def train(args):
     else:
         optimizer = optim.RAdam(model.parameters(), lr=args.lr, betas=(0.9, 0.99))
     
+    model.to(args.device)
+    model.train()
+
+     # configuration = model.config
+    log = open(os.path.join(args.dir_result, 'train_res.txt'), 'a')
+    #write starting args to log
+    log.write(str(args) + '\n')
+
+    tr_losses = []
+    val_losses = []
+    val_cls_accs = []
+
+    for epoch in range(args.epochs):
+        for i, batch in enumerate(tqdm(train_dataloader, desc="TRAIN | Epoch: {}".format(epoch), mininterval=0.01)):
+            # each row in batch before processing is ordered as follows: (text, cls_num, final_rationales_str) : text is the tweet , cls_num is the label (0 for NOT and 1 for OFF), final_rationales_str is the rationale corresponding to the tokenized text
+            pass
+
     
 
 if __name__ == '__main__':
