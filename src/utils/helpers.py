@@ -12,7 +12,7 @@ def get_device():
 def add_tokens_to_tokenizer(args, tokenizer):
     # TODO : Replace with special tokens from SOLD dataset
     special_tokens_dict = {'additional_special_tokens': 
-                            ['<user>', '<number>']}  # hatexplain
+                            ['@USER', '<URL>']}  # hatexplain
     n_added_tokens = tokenizer.add_special_tokens(special_tokens_dict)
     # print(tokenizer.all_special_tokens) 
     # print(tokenizer.all_special_ids)
