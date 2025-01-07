@@ -62,7 +62,7 @@ class SOLDDataset(Dataset):
 
     def __getitem__(self, idx):
         id = self.dataset[idx]['post_id']
-        text = self.dataset[idx]['text']
+        text = self.dataset[idx]['tokens'] #use tokens key instead of text because the length of rationales is the same as tokens
         label = self.dataset[idx]['label']
         cls_num = self.label_list.index(label)
         
