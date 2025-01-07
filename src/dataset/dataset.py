@@ -67,8 +67,20 @@ class SOLDDataset(Dataset):
         cls_num = self.label_list.index(label)
         
         if self.intermediate:
-            rationales = json.loads(self.dataset[idx]['rationales'])
-            final_rationale_tokens = get_token_rationale(self.tokenizer, copy.deepcopy(text), copy.deepcopy(rationales), copy.deepcopy(id))
+            raw_rationale_from_ds = self.dataset[idx]['rationales'] #this is as a string (of a list) in the dataset
+            rationales = literal_eval(raw_rationale_from_ds) # converts the raw string to a list of integers
+            
+
+            # convert ratianles back to a string and make sure its same as the original raw_rationale_from_ds
+            back_to_str = "[" + ", ".join([str(r) for r in rationales]) + "]"
+            assert raw_rationale_from_ds == back_to_str, "Rationales are not the same after conversion"
+
+            
+            if len(rationales) != len(text.split()):
+                rationales = [0] * len(text.split())
+            
+
+            final_rationale_tokens = get_token_rationale(self.tokenizer, copy.deepcopy(text.split(' ')), copy.deepcopy(rationales), copy.deepcopy(id))
 
             tmp = []
             for r in final_rationale_tokens:
