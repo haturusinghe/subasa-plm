@@ -30,6 +30,8 @@ def parse_args():
 
     # DATASET
     # TODO : Give option to use dataset from local folder or download from huggingface
+    dataset_choices = ['sold', 'hatexplain']
+    parser.add_argument('--dataset', default='sold', choices=dataset_choices, help='a dataset to use')
     
     # PRETRAINED MODEL
     model_choices = ['xlm-roberta-large', 'xlm-roberta-base' ]
