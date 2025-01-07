@@ -52,6 +52,10 @@ def parse_args():
     return parser.parse_args()
 
 def train(args):
+    # Setup logging
+    logger = setup_logging()
+    logger.info("Starting with args: {}".format(args))
+
     tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
     tokenizer = add_tokens_to_tokenizer(args, tokenizer)
 
@@ -89,41 +93,5 @@ if __name__ == '__main__':
     gc.collect()
     torch.cuda.empty_cache()
 
-    print(args)
-
     train(args)
 
-# def main():
-#     # Setup logging
-#     logger = setup_logging()
-#     logger.info("Starting training pipeline")
-
-#     # Parse arguments
-#     args = parse_args()
-
-#     # Create configuration
-#     config = ModelConfig(
-#         model_name=args.model_name,
-#         max_length=args.max_length,
-#         batch_size=args.batch_size,
-#         learning_rate=args.learning_rate,
-#         epochs=args.epochs,
-#         output_dir=args.output_dir
-#     )
-
-
-
-#     try:
-#         # Train the model
-#         logger.info("Starting training")
-
-
-#         # Evaluate the model
-#         logger.info("Starting evaluation")
-
-#         # Log results
-#         logger.info("Classification Report:")
-
-#     except Exception as e:
-#         logger.error(f"An error occurred: {str(e)}")
-#         raise
