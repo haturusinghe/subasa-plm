@@ -7,23 +7,27 @@ from src.utils.helpers import encode
 
 from config import HF_TOKEN, WANDB_API_KEY
 
+hf_sold_train = load_dataset('sinhala-nlp/SOLD', split='train')
+print(hf_sold_train[0])
+sold_train = Dataset.to_pandas(hf_sold_train)
 
-sold_train = Dataset.to_pandas(load_dataset('sinhala-nlp/SOLD', split='train'))
-sold_test = Dataset.to_pandas(load_dataset('sinhala-nlp/SOLD', split='test'))
+hf_sold_test = load_dataset('sinhala-nlp/SOLD', split='test')
+print(hf_sold_test)
+sold_test = Dataset.to_pandas(hf_sold_test)
 
-trn_data = sold_train.rename(columns={'label': 'labels'})
-tst_data = sold_test.rename(columns={'label': 'labels'})
+# trn_data = sold_train.rename(columns={'label': 'labels'})
+# tst_data = sold_test.rename(columns={'label': 'labels'})
 
-trn_data.to_json(
-    'sold_train_split.json',
+sold_train.to_json(
+    'SOLD_DATASET/sold_train_split.json',
     orient='records',
     indent=4,
     force_ascii=False,
     date_format='iso'
 )
 
-tst_data.to_json(
-    'sold_test_split.json',
+sold_test.to_json(
+    'SOLD_DATASET/sold_test_split.json',
     orient='records',
     indent=4,
     force_ascii=False,
