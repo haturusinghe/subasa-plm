@@ -19,7 +19,7 @@ import random
 
 from src.config.config import ModelConfig
 from src.utils.logging_utils import setup_logging
-from src.utils.helpers import get_device
+from src.utils.helpers import get_device, add_tokens_to_tokenizer
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Subasa - Adapting Language Models for Low Resourced Offensive Language Detection in Sinhala')
@@ -85,6 +85,7 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     args.test = False
+    args.check_errors = False
     args.device = get_device()
 
     lm = '-'.join(args.pretrained_model.split('-')[:])
@@ -107,4 +108,4 @@ if __name__ == '__main__':
 
     print(args)
 
-    # train(args)
+    train(args)
