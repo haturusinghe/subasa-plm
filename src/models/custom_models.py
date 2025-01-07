@@ -16,7 +16,7 @@ import numpy as np
 class XLMRobertaCustomForTCwMRP(XLMRobertaForTokenClassification):
     def __init__(self, config):
         super().__init__(config)
-        self.bert = XLMRobertaModelForMRP(config, add_pooling_layer=False)
+        self.roberta = XLMRobertaModelForMRP(config, add_pooling_layer=False)
     
     def forward(self,
         input_ids=None,
