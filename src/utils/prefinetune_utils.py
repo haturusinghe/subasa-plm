@@ -69,3 +69,25 @@ def make_masked_rationale_label(args, labels, emb_layer):
     return masked_idxs_list, label_reps_list, masked_labels_list
     
 
+def add_pads(args, max_len, labels, masked_labels, label_reps):
+    assert len(labels) == len(masked_labels) == len(label_reps), '[!] add_pads | different total nums {} {} {}'.format(len(labels), len(masked_labels), len(label_reps))
+    labels_pad, masked_labels_pad, label_reps_pad = [], [], []
+    for label, mk_label, rep in zip(labels, masked_labels, label_reps):
+        assert len(label) == len(mk_label) == rep.shape[0], '[!] add_pads | different lens of each ele {} {} {}'.format(len(label), len(mk_label), rep.shape[0])
+        if args.test:
+            labels_pad.append(label)
+            masked_labels_pad.append(mk_label)
+            label_reps_pad.append(rep)
+        else:
+            n_pads = max_len - len(label)
+            label = label + [0]*n_pads
+            mk_label = mk_label + [-100]*n_pads
+            zero_ten = torch.zeros(n_pads, 768).to(args.device)
+            rep = torch.cat((rep, zero_ten), 0)
+            
+            assert len(label) == len(mk_label) == rep.shape[0], '[!] add_pads | different lens of each ele'
+            labels_pad.append(label)
+            masked_labels_pad.append(mk_label)
+            label_reps_pad.append(rep)
+
+    return labels_pad, masked_labels_pad, label_reps_pad
