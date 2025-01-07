@@ -121,7 +121,32 @@ def train(args):
     for epoch in range(args.epochs):
         for i, batch in enumerate(tqdm(train_dataloader, desc="TRAIN | Epoch: {}".format(epoch), mininterval=0.01)):
             # each row in batch before processing is ordered as follows: (text, cls_num, final_rationales_str) : text is the tweet , cls_num is the label (0 for NOT and 1 for OFF), final_rationales_str is the rationale corresponding to the tokenized text
-            pass
+            in_tensor = tokenizer(batch[0], return_tensors='pt', padding=True)
+            max_len = in_tensor['input_ids'].shape[1] 
+
+            optimizer.zero_grad()
+
+            if args.intermediate == 'rp':  
+                in_tensor = in_tensor.to(args.device)
+                gts = prepare_gts(args, max_len, batch[2])
+                gts_tensor = torch.tensor(gts).long().to(args.device)
+                out_tensor = model(**in_tensor, labels=gts_tensor)
+                break
+                
+            elif args.intermediate == 'mrp':
+                in_tensor = in_tensor.to(args.device)
+                gts = prepare_gts(args, max_len, batch[2])
+                masked_idxs, label_reps, masked_gts = make_masked_rationale_label(args, gts, emb_layer)
+                gts_pad, masked_gts_pad, label_reps = add_pads(args, max_len, gts, masked_gts, label_reps)
+
+                label_reps = torch.stack(label_reps).to(args.device)
+                gts_tensor = torch.tensor(masked_gts_pad).to(args.device)
+                in_tensor['label_reps'] = label_reps
+                out_tensor = model(**in_tensor, labels=gts_tensor) 
+                break
+
+          
+            
 
     
 
