@@ -23,7 +23,10 @@ class SOLDDataset(Dataset):
 
         if mode == 'train':
             with open(self.train_dataset_path, 'r') as f:
-                self.dataset = json.load(f)
+                self.dataset = list(json.load(f))
+            # Sort dataset by a unique identifier to ensure consistent ordering
+            self.dataset.sort(key=lambda x: x['post_id'])
+            
             for d in self.dataset:
                 for i in range(len(self.label_list)):
                     if d['label'] == self.label_list[i]:
@@ -33,7 +36,9 @@ class SOLDDataset(Dataset):
 
         elif mode == 'test':
             with open(self.test_dataset_path, 'r') as f:
-                self.dataset = json.load(f)
+                self.dataset = list(json.load(f))
+            # Sort dataset by a unique identifier to ensure consistent ordering
+            self.dataset.sort(key=lambda x: x['post_id'])
 
         if args.intermediate:
             rm_idxs = []
