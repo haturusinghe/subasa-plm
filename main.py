@@ -67,6 +67,8 @@ def parse_args():
     parser.add_argument('--mask_ratio', type=float, default=0.5)
     parser.add_argument('--n_tk_label', type=int, default=2)
 
+    parser.add_argument('--check_errors', default=False, help='check errors in the dataset', type=bool)
+
     return parser.parse_args()
 
 def train(args):
