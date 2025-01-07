@@ -140,13 +140,11 @@ def train(args):
             optimizer.zero_grad()
 
             if args.intermediate == 'rp':  
-                in_tensor = in_tensor.to(args.device)
                 gts = prepare_gts(args, max_len, batch[2])
                 gts_tensor = torch.tensor(gts).long().to(args.device)
                 out_tensor = model(**in_tensor, labels=gts_tensor)
                 
             elif args.intermediate == 'mrp':
-                in_tensor = in_tensor.to(args.device)
                 gts = prepare_gts(args, max_len, batch[2])
                 masked_idxs, label_reps, masked_gts = make_masked_rationale_label(args, gts, emb_layer)
                 gts_pad, masked_gts_pad, label_reps = add_pads(args, max_len, gts, masked_gts, label_reps)
