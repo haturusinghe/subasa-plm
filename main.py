@@ -51,6 +51,38 @@ def parse_args():
 
     return parser.parse_args()
 
+def train(args):
+    # TODO : Add dataset loading and tokenization
+    pass
+
+if __name__ == '__main__':
+    args = parse_args()
+    args.test = False
+    args.check_errors = False
+    args.device = get_device()
+
+    lm = '-'.join(args.pretrained_model.split('-')[:])
+
+    now = datetime.now()
+    args.exp_date = (now.strftime('%d%m%Y-%H%M') + '_LK')
+    args.exp_name = args.exp_date + '_'+ lm + '_' + args.intermediate +  "_"  + str(args.lr) + "_" + str(args.batch_size) + "_" + str(args.val_int)
+    
+    dir_result = os.path.join("pre_finetune", args.exp_name)
+    if not os.path.exists(dir_result):
+        os.makedirs(dir_result)
+
+    print("Checkpoint path: ", dir_result)
+    args.dir_result = dir_result
+    args.waiting = 0
+    args.n_eval = 0
+
+    gc.collect()
+    torch.cuda.empty_cache()
+
+    print(args)
+
+    train(args)
+
 # def main():
 #     # Setup logging
 #     logger = setup_logging()
@@ -85,31 +117,3 @@ def parse_args():
 #     except Exception as e:
 #         logger.error(f"An error occurred: {str(e)}")
 #         raise
-
-if __name__ == '__main__':
-    args = parse_args()
-    args.test = False
-    args.check_errors = False
-    args.device = get_device()
-
-    lm = '-'.join(args.pretrained_model.split('-')[:])
-
-    now = datetime.now()
-    args.exp_date = (now.strftime('%d%m%Y-%H%M') + '_LK')
-    args.exp_name = args.exp_date + '_'+ lm + '_' + args.intermediate +  "_"  + str(args.lr) + "_" + str(args.batch_size) + "_" + str(args.val_int)
-    
-    dir_result = os.path.join("pre_finetune", args.exp_name)
-    if not os.path.exists(dir_result):
-        os.makedirs(dir_result)
-
-    print("Checkpoint path: ", dir_result)
-    args.dir_result = dir_result
-    args.waiting = 0
-    args.n_eval = 0
-
-    gc.collect()
-    torch.cuda.empty_cache()
-
-    print(args)
-
-    train(args)
