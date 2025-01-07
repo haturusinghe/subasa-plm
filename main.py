@@ -87,7 +87,7 @@ if __name__ == '__main__':
     args.test = False
     args.device = get_device()
 
-    lm = '-'.join(args.pretrained_model.split('-')[:-1])
+    lm = '-'.join(args.pretrained_model.split('-')[:])
 
     now = datetime.now()
     args.exp_date = (now.strftime('%d%m%Y-%H%M') + '_LK')
