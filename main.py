@@ -24,9 +24,13 @@ from src.utils.logging_utils import setup_logging
 from src.utils.helpers import get_device, add_tokens_to_tokenizer
 
 from src.models.custom_models import XLMRobertaCustomForTCwMRP
+from src.dataset.dataset import SOLDDataset
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Subasa - Adapting Language Models for Low Resourced Offensive Language Detection in Sinhala')
+
+    #SEED 
+    parser.add_argument('--seed', type=int, default=42, help='random seed')
 
     # DATASET
     # TODO : Give option to use dataset from local folder or download from huggingface
@@ -72,7 +76,7 @@ def train(args):
     model.resize_token_embeddings(len(tokenizer))
 
     # Define dataloader
-    train_dataset = SSOLDDataset(args, 'train') # TODO : Implement SOLDDataset Class in src/data/dataset.py
+    train_dataset = SOLDDataset(args, 'train') # TODO : Implement SOLDDataset Class in src/data/dataset.py
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     
     val_dataset = SOLDDataset(args, 'val') # TODO : Implement SOLDDataset Class in src/data/dataset.py
