@@ -22,6 +22,7 @@ from sklearn.preprocessing import MultiLabelBinarizer
 from src.config.config import ModelConfig
 from src.utils.logging_utils import setup_logging
 from src.utils.helpers import get_device, add_tokens_to_tokenizer, GetLossAverage
+from src.utils.prefinetune_utils import prepare_gts, make_masked_rationale_label, add_pads
 
 from src.models.custom_models import XLMRobertaCustomForTCwMRP
 from src.dataset.dataset import SOLDDataset
