@@ -15,7 +15,6 @@ import argparse
 from src.utils.helpers import add_tokens_to_tokenizer, get_token_rationale
 
 class SOLDDataset(Dataset):
-    # TODO 
     def __init__(self, args, mode='train'):
         self.train_dataset_path = 'SOLD_DATASET/sold_train_split.json' #TODO : Make path dynamic ?
         self.test_dataset_path = 'SOLD_DATASET/sold_test_split.json'
@@ -23,24 +22,30 @@ class SOLDDataset(Dataset):
         self.label_list = ['NOT' , 'OFF']
         self.label_count = [0, 0]
 
-        if mode == 'train':
+        if mode == 'test':
+            with open(self.test_dataset_path, 'r') as f:
+                self.dataset = list(json.load(f))
+            # Sort dataset by a unique identifier to ensure consistent ordering
+            self.dataset.sort(key=lambda x: x['post_id'])
+        elif mode == 'train' or mode == 'val':
             with open(self.train_dataset_path, 'r') as f:
                 self.dataset = list(json.load(f))
             # Sort dataset by a unique identifier to ensure consistent ordering
             self.dataset.sort(key=lambda x: x['post_id'])
+
+            #use train_test_split to split the train set into train and validation
+            train_set, val_set = train_test_split(self.dataset, test_size=0.1, random_state=args.seed)
+
+            if mode == 'train':
+                self.dataset = train_set
+            elif mode == 'val':
+                self.dataset = val_set
+
             
             for d in self.dataset:
                 for i in range(len(self.label_list)):
                     if d['label'] == self.label_list[i]:
                         self.label_count[i] += 1
-            
-            # TODO : If its train mode, split the train into train and validation from the initial train set
-
-        elif mode == 'test':
-            with open(self.test_dataset_path, 'r') as f:
-                self.dataset = list(json.load(f))
-            # Sort dataset by a unique identifier to ensure consistent ordering
-            self.dataset.sort(key=lambda x: x['post_id'])
 
         if args.intermediate:
             rm_idxs = []
