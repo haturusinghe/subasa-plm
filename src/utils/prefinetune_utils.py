@@ -24,3 +24,48 @@ def prepare_gts(args, max_len, bi_rats_str):
 
     return gts # returns a list of the original rationale strings with padding added to match the max_len of the input_ids tensor
 
+
+###### MRP ######
+def make_masked_rationale_label(args, labels, emb_layer):
+    """
+    args : starting args from main.py
+    labels : batch of rationale strings converted to list with padding added to match the max_len of the input_ids tensor (output of the prepare_gts function)
+    emb_layer : the embedding layer of the model
+
+    """
+    label_reps_list = []
+    masked_idxs_list = []
+    masked_labels_list = []
+    for label in labels:
+        idxs = list(range(len(label)))
+        if args.test:
+            masked_idxs = idxs[1:-1]
+            masked_label = [-100]+label[1:-1]+[-100]
+            label_rep = torch.zeros(len(label), emb_layer.embedding_dim)
+        else:  # Validation and Training
+            masked_idxs = random.sample(idxs[1:-1], int(len(idxs[1:-1])*args.mask_ratio)) # according to the mask ratio we randomly select a number of indices in the rationale list to mask
+            masked_idxs.sort()
+            label_tensor = torch.tensor(label).to(args.device) # convert the rationale list to a tensor
+            label_rep = emb_layer(label_tensor) # pass the tensor to the embedding layer to get the embeddings of the rationale tokens
+            label_rep[0] = torch.zeros(label_rep[0].shape) # set the first token to zero since we are not interested in them
+            label_rep[-1] = torch.zeros(label_rep[-1].shape) # set the last token to zero since we are not interested in them
+            for i in masked_idxs:
+                label_rep[i] = torch.zeros(label_rep[i].shape) # go through the list of indices to mask and set the embeddings of the tokens at those indices to zero (mask them)
+            
+            # For loss
+            masked_label = []
+            for j in idxs:
+                if j in masked_idxs:
+                    masked_label.append(label[j])
+                else:
+                    masked_label.append(-100)
+            
+        assert len(masked_label) == label_rep.shape[0], '[!] len(masked_label) != label_rep.shape[0] | \n{} \n{}'.format(masked_label, label_rep)
+        
+        masked_idxs_list.append(masked_idxs) # list of indices of the rationale tokens that were masked
+        masked_labels_list.append(masked_label) # labels of the rationale tokens that were masked (ground truth)
+        label_reps_list.append(label_rep) # list of tensors of embeddings of the rationale tokens with the masked tokens set to zero vectors
+
+    return masked_idxs_list, label_reps_list, masked_labels_list
+    
+
