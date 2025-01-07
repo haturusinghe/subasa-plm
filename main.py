@@ -300,7 +300,6 @@ def test_mrp(args):
 if __name__ == '__main__':
     args = parse_args()
     args.test = False
-    args.check_errors = False
     args.device = get_device()
 
     lm = '-'.join(args.pretrained_model.split('-')[:])
