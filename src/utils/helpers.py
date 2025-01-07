@@ -67,3 +67,27 @@ class GetLossAverage(object):
         if self.n_count != 0:
             res = self.sum / float(self.n_count)
         return res
+
+
+def save_checkpoint(args, losses, model_state, trained_model):
+    # checkpoint = {
+    #     'args': args,
+    #     'model_state': model_state,
+    #     'optimizer_state': optimizer_state
+    # }
+    file_name = args.exp_name + '.ckpt'
+    trained_model.save_pretrained(save_directory=os.path.join(args.dir_result, file_name))
+
+    args.waiting += 1
+    if losses[-1] <= min(losses):
+        # print(losses)
+        args.waiting = 0
+        file_name = 'BEST_' + file_name
+        trained_model.save_pretrained(save_directory=os.path.join(args.dir_result, file_name))
+        
+        if args.intermediate == 'mrp':
+            # Save the embedding layer params
+            emb_file_name = args.exp_name + '_emb.ckpt'
+            torch.save(model_state.state_dict(), os.path.join(args.dir_result, emb_file_name))
+
+        print("[!] The best checkpoint is updated")
