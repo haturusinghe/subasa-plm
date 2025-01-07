@@ -59,7 +59,7 @@ def train(args):
         model = XLMRobertaForTokenClassification.from_pretrained(args.pretrained_model)
         emb_layer = None
     elif args.intermediate == 'mrp':
-        model = XLMRobertaCustomForTCwMRP.from_pretrained(args.pretrained_model) # TODO : Create this custom model, refer to BertForTCwMRP class in MRP repo
+        model = XLMRobertaCustomForTCwMRP.from_pretrained(args.pretrained_model) 
         emb_layer = nn.Embedding(args.n_tk_label, 768)
         model.config.output_attentions=True
     
