@@ -127,7 +127,7 @@ def train(args):
     dyanamic_val_int = floor(steps_per_epoch / 3) - 3
 
     for epoch in range(args.epochs):
-        for i, batch in enumerate(tqdm(train_dataloader, desc="TRAIN | Epoch: {}".format(epoch), mininterval=0.01)):
+        for i, batch in enumerate(tqdm(train_dataloader, desc="TRAINING MODEL for {} | Epoch: {}".format(args.intermediate,epoch), mininterval=0.01)):
             # each row in batch before processing is ordered as follows: (text, cls_num, final_rationales_str) : text is the tweet , cls_num is the label (0 for NOT and 1 for OFF), final_rationales_str is the rationale corresponding to the tokenized text
             in_tensor = tokenizer(batch[0], return_tensors='pt', padding=True)
             max_len = in_tensor['input_ids'].shape[1] 
@@ -139,7 +139,6 @@ def train(args):
                 gts = prepare_gts(args, max_len, batch[2])
                 gts_tensor = torch.tensor(gts).long().to(args.device)
                 out_tensor = model(**in_tensor, labels=gts_tensor)
-                break
                 
             elif args.intermediate == 'mrp':
                 in_tensor = in_tensor.to(args.device)
@@ -150,8 +149,52 @@ def train(args):
                 label_reps = torch.stack(label_reps).to(args.device)
                 gts_tensor = torch.tensor(masked_gts_pad).to(args.device)
                 in_tensor['label_reps'] = label_reps
-                out_tensor = model(**in_tensor, labels=gts_tensor) 
+                out_tensor = model(**in_tensor, labels=gts_tensor)
+
+            loss = out_tensor.loss
+            loss.backward()
+            optimizer.step()
+            get_tr_loss.add(loss)
+
+            # validation model during training
+            if i == 0 or (i+1) % dyanamic_val_int == 0:
+                _, val_loss, val_time, acc, f1 = evaluate(args, model, val_dataloader, tokenizer, emb_layer, mlb)
+
+                args.n_eval += 1
+                model.train()
+
+                val_losses.append(val_loss)
+                tr_loss = get_tr_loss.aver()
+                tr_losses.append(tr_loss) 
+                get_tr_loss.reset()
+
+                print("[Epoch {} | Val #{}]".format(epoch, args.n_eval))
+                print("* tr_loss: {}".format(tr_loss))
+                print("* val_loss: {} | val_consumed_time: {}".format(val_loss, val_time))
+                print("* acc: {} | f1: {}".format(acc[0], f1[0]))
+                if args.intermediate == 'mrp':
+                    print("* acc about masked: {} | f1 about masked: {}".format(acc[1], f1[1]))
+                print('\n')
+
+                log.write("[Epoch {} | Val #{}]\n".format(epoch, args.n_eval))
+                log.write("* tr_loss: {}\n".format(tr_loss))
+                log.write("* val_loss: {} | val_consumed_time: {}\n".format(val_loss, val_time))
+                log.write("* acc: {} | f1: {}\n".format(acc[0], f1[0]))
+                if args.intermediate == 'mrp':
+                    log.write("* acc about masked: {} | f1 about masked: {}\n".format(acc[1], f1[1]))
+                log.write('\n')
+
+                save_checkpoint(args, val_losses, emb_layer, model)
+
+            if args.waiting > args.patience:
+                print("early stopping")
                 break
+        
+        if args.waiting > args.patience:
+            break
+    
+    log.close()
+
 
           
             
