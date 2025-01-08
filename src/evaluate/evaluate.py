@@ -7,7 +7,7 @@ from tqdm import tqdm
 import time
 import random
 
-from sklearn.metrics import f1_score, accuracy_score
+from sklearn.metrics import classification_report, f1_score, accuracy_score
 
 from src.utils.helpers import get_device, add_tokens_to_tokenizer, GetLossAverage, save_checkpoint
 from src.utils.prefinetune_utils import prepare_gts, make_masked_rationale_label, add_pads
@@ -91,8 +91,11 @@ def evaluate(args, model, dataloader, tokenizer, emb_layer, mlb):
         all_pred_clses = mlb.fit_transform(all_pred_clses)
     acc = [accuracy_score(all_gts, all_pred_clses)]
     f1 = [f1_score(all_gts, all_pred_clses, average='macro')]
+    report = classification_report(all_gts, all_pred_clses, output_dict=True)
+    
     if args.intermediate == 'mrp':
         acc.append(accuracy_score(all_gts_masked_only, all_pred_clses_masked))
         f1.append(f1_score(all_gts_masked_only, all_pred_clses_masked, average='macro'))
+        report_for_masked = classification_report(all_gts_masked_only, all_pred_clses_masked, output_dict=True)
 
-    return losses, loss_avg, time_avg, acc, f1       
+    return losses, loss_avg, time_avg, acc, f1, report, report_for_masked      

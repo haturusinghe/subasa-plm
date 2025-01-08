@@ -226,7 +226,7 @@ def train_mrp(args):
 
             # validation model during training
             if i == 0 or (i+1) % args.val_int == 0:
-                _, val_loss, val_time, acc, f1 = evaluate(args, model, val_dataloader, tokenizer, emb_layer, mlb)
+                _, val_loss, val_time, acc, f1, report, report_for_masked  = evaluate(args, model, val_dataloader, tokenizer, emb_layer, mlb) # report and report_for_masked are classification reports from sklearn
 
                 args.n_eval += 1
                 model.train()
