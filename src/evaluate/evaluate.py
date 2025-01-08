@@ -112,3 +112,62 @@ def evaluate(args, model, dataloader, tokenizer, emb_layer, mlb):
         report_for_masked = classification_report(all_gts_masked_only, all_pred_clses_masked, output_dict=True)
 
     return losses, loss_avg, time_avg, acc, f1, report, report_for_masked      
+
+
+def evaluate_for_hatespeech(args, model, dataloader, tokenizer):
+    losses = []
+    consumed_time = 0
+    total_pred_clses, total_gt_clses, total_probs = [], [], []
+
+    explain_dict_list = []
+    label_dict = {0:'NOT', 1:'OFF'}
+
+    model.eval()
+    with torch.no_grad():
+        for i, batch in enumerate(tqdm(dataloader, desc="EVAL (Phase 2 for OffensiveDetection) | # {}".format(args.n_eval), mininterval=0.01)):
+            input_texts_batch, class_labels_of_texts_batch, ids_batch = batch[0], batch[1], batch[2]
+
+            in_tensor = tokenizer(input_texts_batch, return_tensors='pt', padding=True)
+            in_tensor = in_tensor.to(args.device)
+            gts_tensor = class_labels_of_texts_batch.to(args.device)
+
+            start_time = time.time()
+            out_tensor = model(**in_tensor, labels=gts_tensor)
+            consumed_time += time.time() - start_time
+
+            loss = out_tensor.loss
+            logits = out_tensor.logits
+            attns = out_tensor.attentions[11] 
+
+            losses.append(loss.item())
+
+            probs, pred_clses = get_pred_cls(logits)
+            labels_list = class_labels_of_texts_batch.tolist()
+
+            total_gt_clses += labels_list
+            total_pred_clses += pred_clses
+            total_probs += probs
+
+            # TODO : Complete this
+            # if args.test:
+            #     if labels_list[0] == 0:  # if label is 'NOT'
+            #         continue                     
+            #     explain_dict = get_dict_for_explain(args, model, tokenizer, in_tensor, gts_tensor, attns, ids[0], label_dict[pred_clses[0]], probs[0])
+            #     if explain_dict == None:
+            #         continue
+            #     explain_dict_list.append(explain_dict)
+    
+    time_avg = consumed_time / len(dataloader)
+    loss_avg = [sum(losses) / len(dataloader)]
+    acc = [accuracy_score(total_gt_clses, total_pred_clses)]
+    f1 = f1_score(total_gt_clses, total_pred_clses, average='macro')
+    class_report = classification_report(total_gt_clses, total_pred_clses, output_dict=True)
+    # auroc = roc_auc_score(total_gt_clses, total_probs, multi_class='ovo')
+    auroc = None
+    explain_dict_list = "#TODO"
+    per_based_scores = [f1, auroc]
+
+    return losses, loss_avg, acc, per_based_scores, time_avg, explain_dict_list, class_report
+
+
+
