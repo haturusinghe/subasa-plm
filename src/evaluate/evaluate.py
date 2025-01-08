@@ -7,10 +7,12 @@ from tqdm import tqdm
 import time
 import random
 
-from sklearn.metrics import classification_report, f1_score, accuracy_score,roc_auc_score
+from sklearn.metrics import classification_report, f1_score, accuracy_score,roc_auc_score, roc_curve
 
 from src.utils.helpers import get_device, add_tokens_to_tokenizer, GetLossAverage, save_checkpoint
 from src.utils.prefinetune_utils import prepare_gts, make_masked_rationale_label, add_pads
+
+import wandb
 
 def get_pred_cls(logits):
     probs = F.softmax(logits, dim=1)
@@ -162,9 +164,16 @@ def evaluate_for_hatespeech(args, model, dataloader, tokenizer):
     acc = [accuracy_score(total_gt_clses, total_pred_clses)]
     f1 = f1_score(total_gt_clses, total_pred_clses, average='macro')
     class_report = classification_report(total_gt_clses, total_pred_clses, output_dict=True)
-    auroc = None
-    # auroc = roc_auc_score(total_gt_clses, total_probs)
-    per_based_scores = [f1, auroc]
+
+    # Use probabilities of positive class (class 1)
+    positive_class_probs = total_probs[:, 1]
+    auroc = roc_auc_score(total_gt_clses, positive_class_probs)
+    roc_curve_values = roc_curve(total_gt_clses, positive_class_probs)
+
+    wandb_roc_curve = wandb.plot.roc_curve( total_gt_clses, total_pred_clses,
+                        labels=['NOT','OFF'])
+
+    per_based_scores = [f1, auroc, wandb_roc_curve ,roc_curve_values]
 
     return losses, loss_avg, acc, per_based_scores, time_avg, explain_dict_list, class_report
 
