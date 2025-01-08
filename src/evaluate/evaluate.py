@@ -93,6 +93,7 @@ def evaluate(args, model, dataloader, tokenizer, emb_layer, mlb):
     f1 = [f1_score(all_gts, all_pred_clses, average='macro')]
     report = classification_report(all_gts, all_pred_clses, output_dict=True)
     
+    report_for_masked = None
     if args.intermediate == 'mrp':
         acc.append(accuracy_score(all_gts_masked_only, all_pred_clses_masked))
         f1.append(f1_score(all_gts_masked_only, all_pred_clses_masked, average='macro'))
