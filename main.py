@@ -24,7 +24,7 @@ from sklearn.metrics import f1_score, accuracy_score
 
 from src.config.config import ModelConfig
 from src.utils.logging_utils import setup_logging
-from src.utils.helpers import get_device, add_tokens_to_tokenizer, GetLossAverage, save_checkpoint
+from src.utils.helpers import get_device, add_tokens_to_tokenizer, GetLossAverage, save_checkpoint, load_checkpoint
 from src.utils.prefinetune_utils import prepare_gts, make_masked_rationale_label, add_pads
 from src.evaluate.evaluate import evaluate
 
@@ -91,7 +91,7 @@ def parse_args():
     # python main.py --intermediate mrp --mask_ratio 0.5 --n_tk_label 2 --pretrained_model xlm-roberta-base --batch_size 16 --epochs 5 --lr 0.00005 --val_int 600 --patience 3 --seed 42 --dataset sold --wandb_project subasa-llm-session1 --finetuning_stage pre --skip_empty_rat True --check_errors True
 
     #### FOR STEP 2 ####
-    parser.add_argument('-pf_m', '--pre_finetuned_model', required=False) # path to the pre-finetuned model
+    parser.add_argument('--pre_finetuned_model', required=False) # path to the pre-finetuned model
     parser.add_argument('--label_classess', type=int, default=2) # number of classes in the dataset
 
     ## Explainability based metrics
@@ -360,9 +360,6 @@ if __name__ == '__main__':
     if args.finetuning_stage == 'pre' and args.test == False:
         train_mrp(args)
     elif args.finetuning_stage == 'pre' and args.test == True:
-        if args.model_path is not None:
-            args.dir_result = '/'.join(args.model_path.split('/')[:-1])
-            print("Checkpoint path: ", args.model_path)
-            print("Result path: ", args.dir_result)
-            # test_mrp(args)
+        if args.model_path:
+            test_mrp(args)
 
