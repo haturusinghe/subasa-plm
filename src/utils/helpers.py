@@ -150,3 +150,14 @@ def load_checkpoint(args, load_best=True, path=None):
         raise ValueError("Failed to load model from " + model_path)
         
     return model, embedding_layer
+
+
+
+def get_checkpoint_path(args):
+    path = args.model_path
+    if path is not None:
+        # pre_finetune/08012025-0942_LK_xlm-roberta-base_mrp_5e-05_16_600_seed42_pre/08012025-0942_LK_xlm-roberta-base_mrp_5e-05_16_600_seed42_pre.ckpt
+        model_path = path + '/' + path.split('/')[-1] + '.ckpt'
+        emb_path = path + '/' + path.split('/')[-1] + '_emb.ckpt'
+        model_path_best  = path + '/' + 'BEST_' + path.split('/')[-1] + '.ckpt'
+        return model_path, emb_path , model_path_best
