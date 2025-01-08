@@ -157,6 +157,7 @@ class XLMRobertaModelForMRP(XLMRobertaModel):
         )
 
         embedding_output += label_reps  # masked labels
+        # add the embeddings of the masked tokens to the input embeddings
 
         encoder_outputs = self.encoder(
             embedding_output,
