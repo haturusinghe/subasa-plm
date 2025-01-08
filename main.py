@@ -242,6 +242,9 @@ def train_mrp(args):
                 print("* acc: {} | f1: {}".format(acc[0], f1[0]))
                 if args.intermediate == 'mrp':
                     print("* acc about masked: {} | f1 about masked: {}".format(acc[1], f1[1]))
+                print("Classification Report:\n", report)
+                if args.intermediate == 'mrp':
+                    print("Classification Report for Masked:\n", report_for_masked)
                 print('\n')
 
                 log.write("[Epoch {} | Val #{}]\n".format(epoch, args.n_eval))
@@ -250,6 +253,9 @@ def train_mrp(args):
                 log.write("* acc: {} | f1: {}\n".format(acc[0], f1[0]))
                 if args.intermediate == 'mrp':
                     log.write("* acc about masked: {} | f1 about masked: {}\n".format(acc[1], f1[1]))
+                log.write("Classification Report:\n{}\n".format(report))
+                if args.intermediate == 'mrp':
+                    log.write("Classification Report for Masked:\n{}\n".format(report_for_masked))
                 log.write('\n')
 
                 # Log validation metrics
@@ -258,12 +264,14 @@ def train_mrp(args):
                     "val/accuracy": acc[0],
                     "val/f1": f1[0],
                     "val/time": val_time,
+                    "val/classification_report": report,
                 }
                 
                 if args.intermediate == 'mrp':
                     metrics.update({
                         "val/masked_accuracy": acc[1],
-                        "val/masked_f1": f1[1]
+                        "val/masked_f1": f1[1],
+                        "val/masked_classification_report": report_for_masked,
                     })
                 
                 wandb.log(metrics)
