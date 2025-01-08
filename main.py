@@ -133,9 +133,6 @@ def train_mrp(args):
             "patience": args.patience,
             "skip_empty_rat": args.skip_empty_rat,
             "check_errors": args.check_errors,
-            "top_k": args.top_k,
-            "lime_n_sample": args.lime_n_sample,
-            "num_labels": args.num_labels,
         },
         name=args.exp_name
     )
@@ -215,7 +212,7 @@ def train_mrp(args):
                 out_tensor = model(**in_tensor, labels=gts_tensor)
                 
             elif args.intermediate == 'mrp':
-                gts = prepare_gts(args, max_len, rationales_batch)
+                gts = prepare_gts(args, max_len, rationales_batch) # returns ground truth rationale strings with padding added to match the max_len the text (after tokenization) in the batch
                 masked_idxs, label_reps, masked_gts = make_masked_rationale_label(args, gts, emb_layer)
                 gts_pad, masked_gts_pad, label_reps = add_pads(args, max_len, gts, masked_gts, label_reps)
 
