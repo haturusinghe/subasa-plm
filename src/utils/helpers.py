@@ -81,7 +81,7 @@ def save_checkpoint(args, losses, model_state, trained_model):
 
     args.waiting += 1
     if losses[-1] <= min(losses):
-        # print(losses)
+        print("Loss has been decreased from {:.6f} to {:.6f}".format(min(losses), losses[-1]))
         args.waiting = 0
         file_name = 'BEST_' + file_name
         trained_model.save_pretrained(save_directory=os.path.join(args.dir_result, file_name))
