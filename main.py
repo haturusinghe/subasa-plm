@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch_optimizer as optim
 
-from transformers import XLMRobertaTokenizer, XLMRobertaModel, XLMRobertaConfig,XLMRobertaForTokenClassification, XLMRobertaForSequenceClassification
+from transformers import XLMRobertaTokenizer, XLMRobertaModel, XLMRobertaConfig,XLMRobertaForTokenClassification, XLMRobertaForSequenceClassification , XLMRobertaForTokenClassification,XLMRobertaForMaskedLM
 
 import argparse
 import logging
