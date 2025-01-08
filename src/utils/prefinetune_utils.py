@@ -72,22 +72,22 @@ def make_masked_rationale_label(args, labels, emb_layer):
 def add_pads(args, max_len, labels, masked_labels, label_reps):
     assert len(labels) == len(masked_labels) == len(label_reps), '[!] add_pads | different total nums {} {} {}'.format(len(labels), len(masked_labels), len(label_reps))
     labels_pad, masked_labels_pad, label_reps_pad = [], [], []
-    for label, mk_label, rep in zip(labels, masked_labels, label_reps):
-        assert len(label) == len(mk_label) == rep.shape[0], '[!] add_pads | different lens of each ele {} {} {}'.format(len(label), len(mk_label), rep.shape[0])
+    for label_for_each_token, label_with_masks, token_embeddings_with_masks in zip(labels, masked_labels, label_reps):
+        assert len(label_for_each_token) == len(label_with_masks) == token_embeddings_with_masks.shape[0], '[!] add_pads | different lens of each ele {} {} {}'.format(len(label_for_each_token), len(label_with_masks), token_embeddings_with_masks.shape[0])
         if args.test:
-            labels_pad.append(label)
-            masked_labels_pad.append(mk_label)
-            label_reps_pad.append(rep)
+            labels_pad.append(label_for_each_token)
+            masked_labels_pad.append(label_with_masks)
+            label_reps_pad.append(token_embeddings_with_masks)
         else:
-            n_pads = max_len - len(label)
-            label = label + [0]*n_pads
-            mk_label = mk_label + [-100]*n_pads
+            n_pads = max_len - len(label_for_each_token) # get the length of the maximmum length tokonized sequence
+            label_for_each_token = label_for_each_token + [0]*n_pads # add padds to make each sequence the same length
+            label_with_masks = label_with_masks + [-100]*n_pads # add padds to make each sequence the same length
             zero_ten = torch.zeros(n_pads, 768).to(args.device)
-            rep = torch.cat((rep, zero_ten), 0)
+            token_embeddings_with_masks = torch.cat((token_embeddings_with_masks, zero_ten), 0)
             
-            assert len(label) == len(mk_label) == rep.shape[0], '[!] add_pads | different lens of each ele'
-            labels_pad.append(label)
-            masked_labels_pad.append(mk_label)
-            label_reps_pad.append(rep)
+            assert len(label_for_each_token) == len(label_with_masks) == token_embeddings_with_masks.shape[0], '[!] add_pads | different lens of each ele'
+            labels_pad.append(label_for_each_token)
+            masked_labels_pad.append(label_with_masks)
+            label_reps_pad.append(token_embeddings_with_masks)
 
     return labels_pad, masked_labels_pad, label_reps_pad
