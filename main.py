@@ -1,4 +1,5 @@
 # Standard library imports 
+import argparse
 import gc
 import json
 import logging
@@ -582,13 +583,9 @@ def test_for_hate_speech(args):
     wandb.init(
         project=args.wandb_project,
         config={
-            "learning_rate": args.lr,
-            "epochs": args.epochs,
             "batch_size": args.batch_size,
             "model": args.pretrained_model,
-            "intermediate_task": args.intermediate,
-            "n_tk_label": args.n_tk_label,
-            "mask_ratio": args.mask_ratio,
+            "model_path": args.model_path,
             "seed": args.seed,
             "dataset": args.dataset,
             "finetuning_stage": args.finetuning_stage,
@@ -599,14 +596,14 @@ def test_for_hate_speech(args):
             "top_k": args.top_k,
             "lime_n_sample": args.lime_n_sample,
             "label_classes": args.num_labels,
-            "pre_finetuned_model": args.pre_finetuned_model,
             "test": args.test,
+            "exp_name": args.exp_name
         },
         name=args.exp_name
     )
 
     tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
-    model = XLMRobertaForSequenceClassification.from_pretrained(args.pretrained_model, num_labels=args.num_labels)
+    model = XLMRobertaForSequenceClassification.from_pretrained(args.model_path, num_labels=args.num_labels)
     tokenizer = add_tokens_to_tokenizer(args, tokenizer)
 
     test_dataset = SOLDDataset(args, 'test')
@@ -617,6 +614,7 @@ def test_for_hate_speech(args):
     model.config.output_attentions=True
 
     log = open(os.path.join(args.dir_result, 'test_res_performance.txt'), 'a')
+
 
     losses, loss_avg, acc, per_based_scores, time_avg, explain_dict_list , class_report = evaluate_for_hatespeech(args, model, test_dataloader, tokenizer)
 
@@ -686,10 +684,6 @@ if __name__ == '__main__':
         args.dir_result = os.path.join( args.exp_name, 'test')
         os.makedirs(args.dir_result, exist_ok=True)
 
-        if args.finetuning_stage == 'final':
-            # args.batch_size = 1
-            pass
-
     args.waiting = 0
     args.n_eval = 0
 
@@ -703,5 +697,9 @@ if __name__ == '__main__':
             test_mrp(args)
     elif args.finetuning_stage == 'final' and args.test == False:
         train_offensive_detection(args)
+    elif args.finetuning_stage == 'final' and args.test == True:
+        if args.model_path:
+            args.explain_sold = False
+            test_for_hate_speech(args)
 
 
