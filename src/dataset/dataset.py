@@ -13,6 +13,7 @@ import sys
 import argparse
 
 from src.utils.helpers import add_tokens_to_tokenizer, get_token_rationale
+from src.utils.logging_utils import setup_logging
 
 class SOLDDataset(Dataset):
     def __init__(self, args, mode='train'):
@@ -21,6 +22,7 @@ class SOLDDataset(Dataset):
 
         self.label_list = ['NOT' , 'OFF']
         self.label_count = [0, 0]
+        self.logger = setup_logging()
 
         if mode == 'test':
             with open(self.test_dataset_path, 'r') as f:
@@ -51,14 +53,18 @@ class SOLDDataset(Dataset):
             # this flag is to make the datasets very small to quickly run the training to see errors
             self.dataset = self.dataset[:100]
 
-        if args.intermediate:
+        if args.intermediate and args.skip_empty_rat:
             rm_idxs = []
+            removed_items = []
             for idx, d in enumerate(self.dataset):
                 if 1 not in json.loads(d['rationales']) and d['label'] == "OFF":
                     rm_idxs.append(idx)
             rm_idxs.sort(reverse=True)
             for j in rm_idxs:
+                removed_items.append(self.dataset[j])
                 del self.dataset[j]
+            
+            self.logger.info(f"Mode {mode}\n removed : {str(removed_items)}")
         
         self.mode = mode
         self.intermediate = args.intermediate
