@@ -454,6 +454,9 @@ def train_offensive_detection(args):
     log = open(os.path.join(args.dir_result, 'train_res.txt'), 'a')
 
     tr_losses, val_losses, val_f1s, val_accs = [], [], [], []
+    for epoch in range(args.epochs):
+        for i, batch in enumerate(tqdm(train_dataloader, desc="TRAINING (Phase 2 for OffensiveDetection) | Epoch: {}".format(epoch), mininterval=0.01)):  # data: (post_words, target_rat, post_id)
+            input_texts_batch, class_labels_of_texts_batch, ids_batch = batch[0], batch[1], batch[2]
 
 
 def load_model_train(args):
