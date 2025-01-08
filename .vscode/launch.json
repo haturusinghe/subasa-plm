@@ -1,0 +1,25 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: BERT Finetuning",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "--pretrained_model", "xlm-roberta-base",
+                "--val_int", "600",
+                "--patience", "3",
+                "--batch_size", "1",
+                "--seed", "42",
+                "--wandb_project", "subasa-xlmr-base-session1",
+                "--finetuning_stage", "final",
+                "--num_labels", "2",
+                "--dataset", "sold",
+                "--test", "True",
+                "--model_path", "final_finetune/08012025-1353_LK_xlm-roberta-base_mrp_2e-05_16_600_seed42_ncls2_final/08012025-1353_LK_xlm-roberta-base_mrp_2e-05_16_600_seed42_ncls2_final.ckpt"
+            ]
+        }
+    ]
+}
