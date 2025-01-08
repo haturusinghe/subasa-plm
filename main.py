@@ -82,7 +82,7 @@ def parse_args():
     parser.add_argument('--wandb_project', type=str, default='subasa-llm', help='Weights & Biases project name')
 
     # sample command with all arguments :
-    # python main.py --intermediate mrp --mask_ratio 0.5 --n_tk_label 2 --pretrained_model xlm-roberta-base --batch_size 16 --epochs 5 --lr 0.00005 --val_int 945 --patience 3 --seed 42 --dataset sold --wandb_project subasa-llm-session1 --check_errors True --finetuning_stage pre
+    # python main.py --intermediate mrp --mask_ratio 0.5 --n_tk_label 2 --pretrained_model xlm-roberta-base --batch_size 16 --epochs 5 --lr 0.00005 --val_int 945 --patience 3 --seed 42 --dataset sold --wandb_project subasa-llm-session1 --finetuning_stage pre --skip_empty_rat True --check_errors True
 
     #### FOR STEP 2 ####
     parser.add_argument('-pf_m', '--pre_finetuned_model', required=False) # path to the pre-finetuned model
