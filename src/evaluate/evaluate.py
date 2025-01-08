@@ -7,7 +7,7 @@ from tqdm import tqdm
 import time
 import random
 
-from sklearn.metrics import classification_report, f1_score, accuracy_score
+from sklearn.metrics import classification_report, f1_score, accuracy_score,roc_auc_score
 
 from src.utils.helpers import get_device, add_tokens_to_tokenizer, GetLossAverage, save_checkpoint
 from src.utils.prefinetune_utils import prepare_gts, make_masked_rationale_label, add_pads
