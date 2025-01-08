@@ -1,5 +1,6 @@
 # model checkpoints
 pre_finetune/
+final_finetune/
 commands.md
 
 # Byte-compiled / optimized / DLL files

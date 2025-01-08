@@ -88,7 +88,7 @@ def parse_args():
     
     #### FOR STEP 2 ####
     parser.add_argument('--pre_finetuned_model', required=False, default=None) # path to the pre-finetuned model
-    parser.add_argument('--label_classess', type=int, default=2) # number of classes in the dataset
+    parser.add_argument('--num_labels', type=int, default=2) # number of classes in the dataset
 
     ## Explainability based metrics
     parser.add_argument('--top_k', default=5, help='the top num of attention values to evaluate on explainable metrics')
@@ -122,7 +122,7 @@ def train_mrp(args):
             "check_errors": args.check_errors,
             "top_k": args.top_k,
             "lime_n_sample": args.lime_n_sample,
-            "label_classes": args.label_classess,
+            "num_labels": args.num_labels,
         },
         name=args.exp_name
     )
@@ -419,7 +419,9 @@ def train_offensive_detection(args):
             "check_errors": args.check_errors,
             "top_k": args.top_k,
             "lime_n_sample": args.lime_n_sample,
-            "label_classes": args.label_classess,
+            "label_classes": args.num_labels,
+            "pre_finetuned_model": args.pre_finetuned_model,
+            "test": args.test,
         },
         name=args.exp_name
     )
@@ -579,7 +581,7 @@ if __name__ == '__main__':
         elif args.finetuning_stage == 'final':
             args.intermediate = False
             print("Pre-finetuned model path: ", args.pre_finetuned_model)
-            args.exp_name += f"_ncls{args.label_classess}_final"
+            args.exp_name += f"_ncls{args.num_labels}_final"
             args.num_labels = int(args.num_labels)
 
 
