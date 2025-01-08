@@ -1,37 +1,48 @@
+# Standard library imports 
+import gc
+import json
+import logging
+import os
+import random 
+import sys
+import time
+from datetime import datetime
 from math import ceil, floor
+from pathlib import Path
+
+# Third party imports
+import numpy as np
 import torch
-from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
 import torch_optimizer as optim
-
-from transformers import XLMRobertaTokenizer, XLMRobertaModel, XLMRobertaConfig,XLMRobertaForTokenClassification, XLMRobertaForSequenceClassification , XLMRobertaForTokenClassification,XLMRobertaForMaskedLM
-
-import argparse
-import logging
-from pathlib import Path
-import gc
-import numpy as np
-import os
-import sys
-from tqdm import tqdm
-import time
-from datetime import datetime
-import random
-from sklearn.preprocessing import MultiLabelBinarizer
-
-from sklearn.metrics import f1_score, accuracy_score
-
-from src.config.config import ModelConfig
-from src.utils.logging_utils import setup_logging
-from src.utils.helpers import get_device, add_tokens_to_tokenizer, GetLossAverage, save_checkpoint, load_checkpoint, get_checkpoint_path
-from src.utils.prefinetune_utils import prepare_gts, make_masked_rationale_label, add_pads
-from src.evaluate.evaluate import evaluate, evaluate_for_hatespeech
-
-from src.models.custom_models import XLMRobertaCustomForTCwMRP
-from src.dataset.dataset import SOLDDataset
-
 import wandb
+from sklearn.metrics import f1_score, accuracy_score
+from sklearn.preprocessing import MultiLabelBinarizer
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+from transformers import (
+    XLMRobertaForMaskedLM,
+    XLMRobertaForSequenceClassification,
+    XLMRobertaForTokenClassification,
+    XLMRobertaTokenizer,
+)
+
+# Local imports
+from src.dataset.dataset import SOLDDataset
+from src.evaluate.evaluate import evaluate, evaluate_for_hatespeech
+from src.models.custom_models import XLMRobertaCustomForTCwMRP
+from src.utils.helpers import (
+    GetLossAverage,
+    NumpyEncoder, 
+    add_tokens_to_tokenizer,
+    get_checkpoint_path,
+    get_device,
+    load_checkpoint,
+    save_checkpoint,
+)
+from src.utils.logging_utils import setup_logging
+from src.utils.prefinetune_utils import add_pads, make_masked_rationale_label, prepare_gts
 
 def set_seed(seed):
     torch.manual_seed(seed)
@@ -565,6 +576,74 @@ def load_model_train(args):
     return model, tokenizer
 
 
+def test_for_hate_speech(args):
+    set_seed(args.seed)
+
+    wandb.init(
+        project=args.wandb_project,
+        config={
+            "learning_rate": args.lr,
+            "epochs": args.epochs,
+            "batch_size": args.batch_size,
+            "model": args.pretrained_model,
+            "intermediate_task": args.intermediate,
+            "n_tk_label": args.n_tk_label,
+            "mask_ratio": args.mask_ratio,
+            "seed": args.seed,
+            "dataset": args.dataset,
+            "finetuning_stage": args.finetuning_stage,
+            "val_int": args.val_int,
+            "patience": args.patience,
+            "skip_empty_rat": args.skip_empty_rat,
+            "check_errors": args.check_errors,
+            "top_k": args.top_k,
+            "lime_n_sample": args.lime_n_sample,
+            "label_classes": args.num_labels,
+            "pre_finetuned_model": args.pre_finetuned_model,
+            "test": args.test,
+        },
+        name=args.exp_name
+    )
+
+    tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
+    model = XLMRobertaForSequenceClassification.from_pretrained(args.pretrained_model, num_labels=args.num_labels)
+    tokenizer = add_tokens_to_tokenizer(args, tokenizer)
+
+    test_dataset = SOLDDataset(args, 'test')
+
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+
+    model.to(args.device)
+    model.config.output_attentions=True
+
+    log = open(os.path.join(args.dir_result, 'test_res_performance.txt'), 'a')
+
+    losses, loss_avg, acc, per_based_scores, time_avg, explain_dict_list , class_report = evaluate_for_hatespeech(args, model, test_dataloader, tokenizer)
+
+    print("Loss_avg: {} / min: {} / max: {} | Consumed_time: {}\n".format(loss_avg, min(losses), max(losses), time_avg))
+    print("** Performance-based Scores **")
+    print("Acc: {} | F1: {} | AUROC: {} \n".format(acc[0], per_based_scores[0], per_based_scores[1]))
+
+    log.write("Checkpoint: {}\n".format(args.model_path))
+    log.write("Loss_avg: {} / min: {} / max: {} | Consumed_time: {}\n\n".format(loss_avg, min(losses), max(losses), time_avg))
+    log.write("** Performance-based Scores **\n")
+    log.write("Acc: {} | F1: {} | AUROC: {} \n".format(acc[0], per_based_scores[0], per_based_scores[1]))
+    log.close()
+
+    if args.explain_sold:
+        
+        with open(args.dir_result + '/for_explain_union.json', 'w') as f:
+            f.write('\n'.join(json.dumps(i,cls=NumpyEncoder) for i in explain_dict_list))
+
+        print('[*] Start LIME test')
+        lime_tester = TestLime(args)
+        lime_dict_list = lime_tester.test(args)  # This could take a little long time
+        with open(args.dir_result + '/for_explain_lime.json', 'w') as f:
+            f.write('\n'.join(json.dumps(i,cls=NumpyEncoder) for i in lime_dict_list))
+        
+        get_explain_results(args)  # The test_res_explain.txt file will be written
+
+
 if __name__ == '__main__':
     args = parse_args()
     args.device = get_device()
@@ -594,6 +673,10 @@ if __name__ == '__main__':
         args.exp_name = args.model_path.split('/')[-1]
         args.dir_result = os.path.join( args.exp_name, 'test')
         os.makedirs(args.dir_result, exist_ok=True)
+
+        if args.finetuning_stage == 'final':
+            # args.batch_size = 1
+            pass
 
     args.waiting = 0
     args.n_eval = 0
