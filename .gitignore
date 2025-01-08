@@ -183,3 +183,4 @@ cython_debug/
 # weights and biases
 .wandb/
 wandb/
+08012025-1353_LK_xlm-roberta-base_mrp_2e-05_16_600_seed42_ncls2_final.ckpt/
