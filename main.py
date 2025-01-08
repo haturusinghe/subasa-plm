@@ -90,6 +90,9 @@ def parse_args():
     # sample command with all arguments :
     # python main.py --intermediate mrp --mask_ratio 0.5 --n_tk_label 2 --pretrained_model xlm-roberta-base --batch_size 16 --epochs 5 --lr 0.00005 --val_int 600 --patience 3 --seed 42 --dataset sold --wandb_project subasa-llm-session1 --finetuning_stage pre --skip_empty_rat True --check_errors True
 
+    #sample command for testing only
+    # python main.py --intermediate mrp --pretrained_model xlm-roberta-base --seed 42 --dataset sold --wandb_project subasa-llm-session1 --test True --model_path pre_finetune/08012025-0942_LK_xlm-roberta-base_mrp_5e-05_16_600_seed42_pre
+
     #### FOR STEP 2 ####
     parser.add_argument('--pre_finetuned_model', required=False) # path to the pre-finetuned model
     parser.add_argument('--label_classess', type=int, default=2) # number of classes in the dataset
