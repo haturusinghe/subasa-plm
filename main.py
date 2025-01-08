@@ -395,7 +395,7 @@ def test_mrp(args):
     wandb.log(metrics)
 
     log.close()
-    
+
 
 
 def train_offensive_detection(args):
@@ -452,6 +452,34 @@ def train_offensive_detection(args):
 
     tr_losses, val_losses, val_f1s, val_accs = [], [], [], []
 
+
+def load_model_train(args):
+    tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
+    tokenizer = add_tokens_to_tokenizer(args, tokenizer)
+    model = XLMRobertaForSequenceClassification.from_pretrained(args.pretrained_model, num_labels=args.num_labels)
+
+    if 'mlm' in args.pre_finetuned_model:
+        pre_finetuned_model = XLMRobertaForMaskedLM.from_pretrained(args.pre_finetuned_model) 
+    else:
+        pre_finetuned_model = XLMRobertaForTokenClassification.from_pretrained(args.pre_finetuned_model)
+
+    model_state = model.state_dict()
+    finetuned_state = pre_finetuned_model.state_dict()
+    
+    # Initialize condition layer randomly 
+    filtered_pretrained_state = {}
+    for (k1, v1), (k2, v2) in zip(model_state.items(), finetuned_state.items()):
+        if v1.size() == v2.size():
+            filtered_pretrained_state[k1] = v2
+        else:
+            filtered_pretrained_state[k1] = v1
+
+    model_state.update(filtered_pretrained_state)
+    model.load_state_dict(model_state, strict=True)
+
+    return model, tokenizer
+
+
 if __name__ == '__main__':
     args = parse_args()
     args.device = get_device()
@@ -493,4 +521,7 @@ if __name__ == '__main__':
     elif args.finetuning_stage == 'pre' and args.test == True:
         if args.model_path:
             test_mrp(args)
+    elif args.finetuning_stage == 'final' and args.test == False:
+        train_offensive_detection(args)
+
 
