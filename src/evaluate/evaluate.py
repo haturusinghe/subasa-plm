@@ -149,13 +149,13 @@ def evaluate_for_hatespeech(args, model, dataloader, tokenizer):
             total_probs += probs
 
             # TODO : Complete this
-            # if args.test:
-            #     if labels_list[0] == 0:  # if label is 'NOT'
-            #         continue                     
-            #     explain_dict = get_dict_for_explain(args, model, tokenizer, in_tensor, gts_tensor, attns, ids[0], label_dict[pred_clses[0]], probs[0])
-            #     if explain_dict == None:
-            #         continue
-            #     explain_dict_list.append(explain_dict)
+            if args.test and args.explain_sold:
+                if labels_list[0] == 0:  # if label is 'NOT'
+                    continue                     
+                explain_dict = get_dict_for_explain(args, model, tokenizer, in_tensor, gts_tensor, attns, ids_batch[0], label_dict[pred_clses[0]], probs[0])
+                if explain_dict == None:
+                    continue
+                explain_dict_list.append(explain_dict)
     
     time_avg = consumed_time / len(dataloader)
     loss_avg = [sum(losses) / len(dataloader)]
