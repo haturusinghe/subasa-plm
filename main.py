@@ -499,7 +499,6 @@ def train_offensive_detection(args):
                     "val/time": time_avg,
                     "val/classification_report": class_report,
                     "epoch": epoch,
-                    "learning_rate": optimizer.param_groups[0]['lr']
                 })
 
                 save_checkpoint(args, val_losses, None, model)
@@ -510,7 +509,31 @@ def train_offensive_detection(args):
         if args.waiting > args.patience:
             break
 
-    log.close() 
+    # Final evaluation after training
+    print("\nPerforming final evaluation...")
+    _, loss_avg, acc_avg, per_based_scores, time_avg, _, class_report = evaluate_for_hatespeech(args, model, val_dataloader, tokenizer)
+    
+    print("[Final Evaluation Results]")
+    print("* val_loss: {} | val_consumed_time: {}".format(loss_avg[0], time_avg))
+    print("* acc: {} | f1: {} | AUROC: {}\n".format(acc_avg[0], per_based_scores[0], per_based_scores[1]))
+    print("Classification Report:\n", class_report)
+    
+    # Log final metrics to wandb
+    wandb.log({
+        "final_eval/loss": loss_avg[0],
+        "final_eval/accuracy": acc_avg[0],
+        "final_eval/f1": per_based_scores[0],
+        "final_eval/auroc": per_based_scores[1],
+        "final_eval/time": time_avg,
+        "final_eval/classification_report": class_report
+    })
+
+    log.write("\n[Final Evaluation Results]\n")
+    log.write("* val_loss: {} | val_consumed_time: {}\n".format(loss_avg[0], time_avg))
+    log.write("* acc: {} | f1: {} | AUROC: {}\n".format(acc_avg[0], per_based_scores[0], per_based_scores[1]))
+    log.write("Classification Report:\n{}\n".format(class_report))
+    log.close()
+    wandb.finish()
 
 
 def load_model_train(args):
