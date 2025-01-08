@@ -85,7 +85,7 @@ def parse_args():
     parser.add_argument('--patience', type=int, default=3)
 
     ## Pre-Finetuing Task
-    parser.add_argument('--intermediate', choices=['mrp', 'rp'], required=True, help='choice of an intermediate task')
+    parser.add_argument('--intermediate', choices=['mrp', 'rp'], default=False, required=False, help='choice of an intermediate task')
 
     ## Masked Ratioale Prediction 
     parser.add_argument('--mask_ratio', type=float, default=0.5)
@@ -420,9 +420,6 @@ def train_offensive_detection(args):
             "epochs": args.epochs,
             "batch_size": args.batch_size,
             "model": args.pretrained_model,
-            "intermediate_task": args.intermediate,
-            "n_tk_label": args.n_tk_label,
-            "mask_ratio": args.mask_ratio,
             "seed": args.seed,
             "dataset": args.dataset,
             "finetuning_stage": args.finetuning_stage,
@@ -430,8 +427,6 @@ def train_offensive_detection(args):
             "patience": args.patience,
             "skip_empty_rat": args.skip_empty_rat,
             "check_errors": args.check_errors,
-            "top_k": args.top_k,
-            "lime_n_sample": args.lime_n_sample,
             "label_classes": args.num_labels,
             "pre_finetuned_model": args.pre_finetuned_model,
             "test": args.test,
@@ -669,8 +664,9 @@ if __name__ == '__main__':
     args.exp_date = (now.strftime('%d%m%Y-%H%M') + '_LK')
 
     if args.test == False:
-        args.exp_name = f"{args.exp_date}_{lm}_{args.intermediate}_{args.lr}_{args.batch_size}_{args.val_int}_seed{args.seed}"
+        args.exp_name = f"{args.exp_date}_{args.lr}_{args.batch_size}_{args.val_int}_seed{args.seed}"
         if args.finetuning_stage == 'pre':
+            args.exp_name += f"_{lm}_{args.intermediate}"
             args.exp_name += "_pre"
         elif args.finetuning_stage == 'final':
             args.intermediate = False
@@ -707,7 +703,7 @@ if __name__ == '__main__':
         train_offensive_detection(args)
     elif args.finetuning_stage == 'final' and args.test == True:
         if args.model_path:
-            args.explain_sold = True # Turn it to True if you want to get explainable metrics | WIP
+            args.explain_sold = False # Turn it to True if you want to get explainable metrics | WIP
             test_for_hate_speech(args)
 
 
