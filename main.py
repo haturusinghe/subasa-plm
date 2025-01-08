@@ -32,6 +32,7 @@ from transformers import (
 # Local imports
 from src.dataset.dataset import SOLDDataset
 from src.evaluate.evaluate import evaluate, evaluate_for_hatespeech
+from src.evaluate.lime import TestLime
 from src.models.custom_models import XLMRobertaCustomForTCwMRP
 from src.utils.helpers import (
     GetLossAverage,
@@ -699,7 +700,7 @@ if __name__ == '__main__':
         train_offensive_detection(args)
     elif args.finetuning_stage == 'final' and args.test == True:
         if args.model_path:
-            args.explain_sold = False
+            args.explain_sold = False # Turn it to True if you want to get explainable metrics | WIP
             test_for_hate_speech(args)
 
 
