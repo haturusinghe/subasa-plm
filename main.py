@@ -320,7 +320,7 @@ if __name__ == '__main__':
     now = datetime.now()
     args.exp_date = (now.strftime('%d%m%Y-%H%M') + '_LK')
 
-    args.exp_name = f"{args.exp_date}_{lm}_{args.intermediate}_{args.lr}_{args.batch_size}_{args.val_int}"
+    args.exp_name = f"{args.exp_date}_{lm}_{args.intermediate}_{args.lr}_{args.batch_size}_{args.val_int}_seed{args.seed}"
     if args.finetuning_stage == 'pre':
         args.exp_name += "_pre"
     else:
