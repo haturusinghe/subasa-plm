@@ -166,15 +166,16 @@ def evaluate_for_hatespeech(args, model, dataloader, tokenizer):
     class_report = classification_report(total_gt_clses, total_pred_clses, output_dict=True)
 
     # Use probabilities of positive class (class 1)
+    total_probs = np.array(total_probs)
     positive_class_probs = total_probs[:, 1]
     auroc = roc_auc_score(total_gt_clses, positive_class_probs)
     roc_curve_values = roc_curve(total_gt_clses, positive_class_probs)
 
-    wandb_roc_curve = wandb.plot.roc_curve( total_gt_clses, total_pred_clses,
+    wandb_roc_curve = wandb.plot.roc_curve( total_gt_clses, total_probs,
                         labels=['NOT','OFF'])
 
     per_based_scores = [f1, auroc, wandb_roc_curve ,roc_curve_values]
-
+    print()
     return losses, loss_avg, acc, per_based_scores, time_avg, explain_dict_list, class_report
 
 
