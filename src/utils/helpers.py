@@ -11,6 +11,7 @@ import torch_optimizer as optim
 from transformers import XLMRobertaTokenizer, XLMRobertaModel, XLMRobertaConfig,XLMRobertaForTokenClassification, XLMRobertaForSequenceClassification
 
 from src.models.custom_models import XLMRobertaCustomForTCwMRP
+from src.utils.logging_utils import setup_logging
 
 def get_device():
     if torch.cuda.is_available():
@@ -121,21 +122,26 @@ def load_checkpoint(args, load_best=True, path=None):
         embedding_layer: Loaded embedding layer (if MRP)
     """
 
+    logger = setup_logging()
+
     if path is not None:
         # pre_finetune/08012025-0942_LK_xlm-roberta-base_mrp_5e-05_16_600_seed42_pre/08012025-0942_LK_xlm-roberta-base_mrp_5e-05_16_600_seed42_pre.ckpt
-        model_path = path + path.split('/')[-1] + '.ckpt'
-        emb_path = path + '_emb.ckpt'
+        model_path = path + '/' + path.split('/')[-1] + '.ckpt'
+        emb_path = path + '/' + path.split('/')[-1] + '_emb.ckpt'
 
         if load_best:
-            model_path = path + 'BEST_' + path.split('/')[-1] + '.ckpt'
+            model_path = path + '/' + 'BEST_' + path.split('/')[-1] + '.ckpt'
 
 
     # Load the model
     model = None
     embedding_layer = None
+    logger.info("[MODEL_LOAD] Loading model from {}".format(model_path))
+    logger.info("[EMB_LOAD] Loading embedding layer from {}".format(emb_path))
     if args.intermediate == 'rp':
         model = XLMRobertaForTokenClassification.from_pretrained(model_path)
     elif args.intermediate == 'mrp':
+        logger.info("Loading model from {}".format(model_path))
         model = XLMRobertaCustomForTCwMRP.from_pretrained(model_path)
         embedding_layer = nn.Embedding(args.n_tk_label, 768)
         embedding_layer.load_state_dict(torch.load(emb_path))
