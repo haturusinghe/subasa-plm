@@ -397,6 +397,61 @@ def test_mrp(args):
     log.close()
     
 
+
+def train_offensive_detection(args):
+    # Setup logging
+    logger = setup_logging()
+    logger.info("[START] [FINAL TRAIN HS] Starting with args: {}".format(args))
+
+    # Initialize wandb
+    wandb.init(
+        project=args.wandb_project,
+        config={
+            "learning_rate": args.lr,
+            "epochs": args.epochs,
+            "batch_size": args.batch_size,
+            "model": args.pretrained_model,
+            "intermediate_task": args.intermediate,
+            "n_tk_label": args.n_tk_label,
+            "mask_ratio": args.mask_ratio,
+            "seed": args.seed,
+            "dataset": args.dataset,
+            "finetuning_stage": args.finetuning_stage,
+            "val_int": args.val_int,
+            "patience": args.patience,
+            "skip_empty_rat": args.skip_empty_rat,
+            "check_errors": args.check_errors,
+            "top_k": args.top_k,
+            "lime_n_sample": args.lime_n_sample,
+            "label_classes": args.label_classess,
+        },
+        name=args.exp_name
+    )
+
+    # Set seed
+    set_seed(args.seed)
+
+    model, tokenizer = load_model_train(args)
+    model.resize_token_embeddings(len(tokenizer))
+
+    # Define dataloader
+    train_dataset = SOLDDataset(args, 'train') 
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    
+    val_dataset = SOLDDataset(args, 'val')
+    val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
+
+    get_tr_loss = GetLossAverage()
+    optimizer = optim.RAdam(model.parameters(), lr=args.lr, betas=(0.9, 0.99))
+
+    model.config.output_attentions=True
+    model.to(args.device)
+    model.train()
+
+    log = open(os.path.join(args.dir_result, 'train_res.txt'), 'a')
+
+    tr_losses, val_losses, val_f1s, val_accs = [], [], [], []
+
 if __name__ == '__main__':
     args = parse_args()
     args.device = get_device()
