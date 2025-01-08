@@ -614,16 +614,21 @@ def test_for_hate_speech(args):
 
     losses, loss_avg, acc, per_based_scores, time_avg, explain_dict_list , class_report = evaluate_for_hatespeech(args, model, test_dataloader, tokenizer)
 
+    f1_macro, auroc, wandb_roc_curve, roc_curve_values = per_based_scores
+
+    # Unpack the ROC curve values
+    fpr, tpr, thresholds = roc_curve_values
+
     print("Loss_avg: {} / min: {} / max: {} | Consumed_time: {}\n".format(loss_avg, min(losses), max(losses), time_avg))
     print("** Performance-based Scores **")
-    print("Acc: {} | F1: {} | AUROC: {} \n".format(acc[0], per_based_scores[0], per_based_scores[1]))
+    print("Acc: {} | F1: {} | AUROC: {} \n".format(acc[0], f1_macro, auroc))
     # print classification report like a nice table in terminal
     print("Classification Report:\n", class_report)
 
     log.write("Checkpoint: {}\n".format(args.model_path))
     log.write("Loss_avg: {} / min: {} / max: {} | Consumed_time: {}\n\n".format(loss_avg, min(losses), max(losses), time_avg))
     log.write("** Performance-based Scores **\n")
-    log.write("Acc: {} | F1: {} | AUROC: {} \n".format(acc[0], per_based_scores[0], per_based_scores[1]))
+    log.write("Acc: {} | F1: {} | AUROC: {} \n".format(acc[0], f1_macro, auroc))
     log.write("Classification Report:\n{}\n".format(class_report))
     log.close()
 
@@ -638,6 +643,9 @@ def test_for_hate_speech(args):
         "test/time": time_avg,
         "test/classification_report": class_report,
     })
+
+    wandb.log({"roc" : wandb_roc_curve})
+
 
     if args.explain_sold:
         
