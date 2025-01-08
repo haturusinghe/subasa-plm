@@ -76,6 +76,7 @@ def parse_args():
     
 
     parser.add_argument('--check_errors', default=False, help='check errors in the dataset', type=bool)
+    parser.add_argument('--skip_empty_rat', default=False, help='skip empty rationales', type=bool, required=False)
 
     # Weights & Biases config
     parser.add_argument('--wandb_project', type=str, default='subasa-llm', help='Weights & Biases project name')
