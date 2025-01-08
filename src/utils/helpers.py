@@ -80,26 +80,31 @@ class GetLossAverage(object):
         return res
 
 
-def save_checkpoint(args, losses, model_state, trained_model):
+def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None):
     # checkpoint = {
     #     'args': args,
     #     'model_state': model_state,
     #     'optimizer_state': optimizer_state
     # }
     file_name = args.exp_name + '.ckpt'
-    trained_model.save_pretrained(save_directory=os.path.join(args.dir_result, file_name))
+    save_path = os.path.join(args.dir_result, file_name)
+    trained_model.save_pretrained(save_directory=save_path)
+    if tokenizer:
+        tokenizer.save_pretrained(save_directory=save_path)
 
     args.waiting += 1
     if losses[-1] <= min(losses):
-        print("Loss has been decreased from {:.6f} to {:.6f}".format(min(losses), losses[-1]))
+        print("Loss has been decreased from {:.6f} to {:.6f}".format(min(losses[:-1]) if len(losses) > 1 else losses[-1], losses[-1]))
         args.waiting = 0
-        file_name = 'BEST_' + file_name
-        trained_model.save_pretrained(save_directory=os.path.join(args.dir_result, file_name))
+        best_path = os.path.join(args.dir_result, 'BEST_' + file_name)
+        trained_model.save_pretrained(save_directory=best_path)
+        if tokenizer:
+            tokenizer.save_pretrained(save_directory=best_path)
         
         if args.intermediate == 'mrp':
             # Save the embedding layer params
             emb_file_name = args.exp_name + '_emb.ckpt'
-            torch.save(model_state.state_dict(), os.path.join(args.dir_result, emb_file_name))
+            torch.save(embedding_layer.state_dict(), os.path.join(args.dir_result, emb_file_name))
 
         print("[!] The best checkpoint is updated")
 
