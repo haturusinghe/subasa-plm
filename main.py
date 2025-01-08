@@ -26,7 +26,7 @@ from src.config.config import ModelConfig
 from src.utils.logging_utils import setup_logging
 from src.utils.helpers import get_device, add_tokens_to_tokenizer, GetLossAverage, save_checkpoint, load_checkpoint, get_checkpoint_path
 from src.utils.prefinetune_utils import prepare_gts, make_masked_rationale_label, add_pads
-from src.evaluate.evaluate import evaluate
+from src.evaluate.evaluate import evaluate, evaluate_for_hatespeech
 
 from src.models.custom_models import XLMRobertaCustomForTCwMRP
 from src.dataset.dataset import SOLDDataset
