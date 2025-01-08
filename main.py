@@ -338,6 +338,7 @@ def test_mrp(args):
     print("\nCheckpoint: ", args.model_path)
     print("Loss_avg: {} / min: {} / max: {} | Consumed_time: {}".format(loss_avg, min(losses), max(losses), time_avg))
     print("Acc: {} | F1: {} \n".format(acc[0], f1[0]))
+    print("Classification Report:\n", report)
 
     log.write("Checkpoint: {} \n".format(args.model_path))
     log.write("Loss_avg: {} / min: {} / max: {} | Consumed_time: {} \n".format(loss_avg, min(losses), max(losses), time_avg))
