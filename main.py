@@ -80,6 +80,8 @@ def parse_args():
 
     # Weights & Biases config
     parser.add_argument('--wandb_project', type=str, default='subasa-llm', help='Weights & Biases project name')
+    parser.add_argument('--save_to_hf', default=False, help='save the model to huggingface', type=bool)
+    
 
     # sample command with all arguments :
     # python main.py --intermediate mrp --mask_ratio 0.5 --n_tk_label 2 --pretrained_model xlm-roberta-base --batch_size 16 --epochs 5 --lr 0.00005 --val_int 945 --patience 3 --seed 42 --dataset sold --wandb_project subasa-llm-session1 --finetuning_stage pre --skip_empty_rat True --check_errors True
@@ -112,6 +114,15 @@ def train_mrp(args):
             "n_tk_label": args.n_tk_label,
             "mask_ratio": args.mask_ratio,
             "seed": args.seed,
+            "dataset": args.dataset,
+            "finetuning_stage": args.finetuning_stage,
+            "val_int": args.val_int,
+            "patience": args.patience,
+            "skip_empty_rat": args.skip_empty_rat,
+            "check_errors": args.check_errors,
+            "top_k": args.top_k,
+            "lime_n_sample": args.lime_n_sample,
+            "label_classes": args.label_classess,
         },
         name=args.exp_name
     )
