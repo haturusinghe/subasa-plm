@@ -293,13 +293,13 @@ def train_mrp(args):
 
 
 
+
 def test_mrp(args):
 
     set_seed(args.seed)
     model_path, emb_path , model_path_best = get_checkpoint_path(args)
 
     tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
-    model = XLMRobertaForTokenClassification.from_pretrained(args.model_path) 
     tokenizer = add_tokens_to_tokenizer(args, tokenizer)
 
     if args.intermediate == 'rp':
@@ -327,6 +327,7 @@ def test_mrp(args):
         emb_layer.to(args.device)
 
     model.to(args.device)
+
     log = open(os.path.join(args.dir_result, 'test_res.txt'), 'a')
 
     # calculate total number of steps per epoch
@@ -382,8 +383,13 @@ if __name__ == '__main__':
         dir_result = os.path.join(args.finetuning_stage + "_finetune", args.exp_name)
         os.makedirs(dir_result, exist_ok=True)
 
-    print("Checkpoint path: ", dir_result)
-    args.dir_result = dir_result
+        print("Checkpoint path: ", dir_result)
+        args.dir_result = dir_result
+    elif args.test == True:
+        args.exp_name = args.model_path.split('/')[-1]
+        args.dir_result = os.path.join('test', args.exp_name)
+        os.makedirs(args.dir_result, exist_ok=True)
+
     args.waiting = 0
     args.n_eval = 0
 
