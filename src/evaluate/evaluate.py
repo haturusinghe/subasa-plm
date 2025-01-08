@@ -12,6 +12,18 @@ from sklearn.metrics import classification_report, f1_score, accuracy_score
 from src.utils.helpers import get_device, add_tokens_to_tokenizer, GetLossAverage, save_checkpoint
 from src.utils.prefinetune_utils import prepare_gts, make_masked_rationale_label, add_pads
 
+def get_pred_cls(logits):
+    probs = F.softmax(logits, dim=1)
+    #labels = labels.detach().cpu().numpy()
+    probs = probs.detach().cpu().numpy()
+    max_probs = np.max(probs, axis=1).tolist()
+    probs = probs.tolist()
+    pred_clses = []
+    for m, p in zip(max_probs, probs):
+        pred_clses.append(p.index(m))
+    
+    return probs, pred_clses
+
 def evaluate(args, model, dataloader, tokenizer, emb_layer, mlb):
     all_pred_clses, all_pred_clses_masked, all_gts, all_gts_masked_only = [], [], [], []
     losses = []
