@@ -410,8 +410,11 @@ if __name__ == '__main__':
         args.exp_name = f"{args.exp_date}_{lm}_{args.intermediate}_{args.lr}_{args.batch_size}_{args.val_int}_seed{args.seed}"
         if args.finetuning_stage == 'pre':
             args.exp_name += "_pre"
-        else:
+        elif args.finetuning_stage == 'final':
+            args.intermediate = False
+            print("Pre-finetuned model path: ", args.pre_finetuned_model)
             args.exp_name += f"_ncls{args.label_classess}_final"
+            args.num_labels = int(args.num_labels)
 
 
         dir_result = os.path.join(args.finetuning_stage + "_finetune", args.exp_name)
