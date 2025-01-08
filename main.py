@@ -522,12 +522,12 @@ def train_offensive_detection(args):
     
     # Log final metrics to wandb
     wandb.log({
-        "final_eval/loss": loss_avg[0],
-        "final_eval/accuracy": acc_avg[0],
-        "final_eval/f1": per_based_scores[0],
-        "final_eval/auroc": per_based_scores[1],
-        "final_eval/time": time_avg,
-        "final_eval/classification_report": class_report
+        "val/loss": loss_avg[0],
+        "val/accuracy": acc_avg[0],
+        "val/f1": per_based_scores[0],
+        "val/auroc": per_based_scores[1],
+        "val/time": time_avg,
+        "val/classification_report": class_report
     })
 
     log.write("\n[Final Evaluation Results]\n")
