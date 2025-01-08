@@ -622,11 +622,14 @@ def test_for_hate_speech(args):
     print("Loss_avg: {} / min: {} / max: {} | Consumed_time: {}\n".format(loss_avg, min(losses), max(losses), time_avg))
     print("** Performance-based Scores **")
     print("Acc: {} | F1: {} | AUROC: {} \n".format(acc[0], per_based_scores[0], per_based_scores[1]))
+    # print classification report like a nice table in terminal
+    print("Classification Report:\n", class_report)
 
     log.write("Checkpoint: {}\n".format(args.model_path))
     log.write("Loss_avg: {} / min: {} / max: {} | Consumed_time: {}\n\n".format(loss_avg, min(losses), max(losses), time_avg))
     log.write("** Performance-based Scores **\n")
     log.write("Acc: {} | F1: {} | AUROC: {} \n".format(acc[0], per_based_scores[0], per_based_scores[1]))
+    log.write("Classification Report:\n{}\n".format(class_report))
     log.close()
 
     # Log metrics to wandb
@@ -652,7 +655,8 @@ def test_for_hate_speech(args):
         with open(args.dir_result + '/for_explain_lime.json', 'w') as f:
             f.write('\n'.join(json.dumps(i,cls=NumpyEncoder) for i in lime_dict_list))
         
-        get_explain_results(args)  # The test_res_explain.txt file will be written
+        # TODO :  Implement the get_explain_results(args) function in src/evaluate/explain_results_lime.py
+        # get_explain_results(args)  # The test_res_explain.txt file will be written
 
 
 if __name__ == '__main__':
@@ -700,7 +704,7 @@ if __name__ == '__main__':
         train_offensive_detection(args)
     elif args.finetuning_stage == 'final' and args.test == True:
         if args.model_path:
-            args.explain_sold = False # Turn it to True if you want to get explainable metrics | WIP
+            args.explain_sold = True # Turn it to True if you want to get explainable metrics | WIP
             test_for_hate_speech(args)
 
 
