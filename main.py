@@ -288,11 +288,45 @@ def train_mrp(args):
         if args.waiting > args.patience:
             break
     
-    wandb.finish()
     log.close()
+    test_trained_model(args, model, tokenizer, emb_layer, mlb)
+    wandb.finish()
 
 
+def test_trained_model(args, model, tokenizer, emb_layer, mlb):
+    print("Testing the model after training!!")
+    logger = setup_logging()
+    logger.info("[START] Testing the model after training!!")
+    test_dataset = SOLDDataset(args, 'test')
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
+    losses, loss_avg, time_avg, acc, f1, report, report_for_masked = evaluate(args, model, test_dataloader, tokenizer, emb_layer, mlb)
+
+    print("\nCheckpoint: ", args.model_path)
+    print("Loss_avg: {} / min: {} / max: {} | Consumed_time: {}".format(loss_avg, min(losses), max(losses), time_avg))
+    print("Acc: {} | F1: {} \n".format(acc[0], f1[0]))
+    print("Classification Report:\n", report)
+
+    log = open(os.path.join(args.dir_result, 'test_res.txt'), 'a')
+    log.write("Checkpoint: {} \n".format(args.model_path))
+    log.write("Loss_avg: {} / min: {} / max: {} | Consumed_time: {} \n".format(loss_avg, min(losses), max(losses), time_avg))
+    log.write("Acc: {} | F1: {} \n".format(acc[0], f1[0]))
+
+    # Log validation metrics
+    metrics = {
+        "test/Loss_avg": loss_avg,
+        "test/Loss_min": min(losses),
+        "test/Loss_max": max(losses),
+        "test/accuracy": acc[0],
+        "test/f1": f1[0],
+        "test/time": time_avg,
+    }
+    # log the path of the checkpoint
+    metrics.update({"test/checkpoint": args.model_path})
+
+    wandb.log(metrics)
+
+    log.close()
 
 def test_mrp(args):
 
