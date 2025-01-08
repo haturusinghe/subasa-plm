@@ -387,7 +387,7 @@ if __name__ == '__main__':
         args.dir_result = dir_result
     elif args.test == True:
         args.exp_name = args.model_path.split('/')[-1]
-        args.dir_result = os.path.join('test', args.exp_name)
+        args.dir_result = os.path.join( args.exp_name, 'test')
         os.makedirs(args.dir_result, exist_ok=True)
 
     args.waiting = 0
