@@ -51,6 +51,10 @@ def parse_args():
     # DATASET
     dataset_choices = ['sold', 'hatexplain']
     parser.add_argument('--dataset', default='sold', choices=dataset_choices, help='a dataset to use')
+
+    # EXPERIMENT FINETUNING STAGE
+    finetuning_stage_choices = ['pre', 'final']
+    parser.add_argument('--finetuning_stage', default='pre', choices=finetuning_stage_choices, help='a finetuning stage to use')
     
     # PRETRAINED MODEL
     model_choices = ['xlm-roberta-large', 'xlm-roberta-base' ]
@@ -69,6 +73,7 @@ def parse_args():
     ## Masked Ratioale Prediction 
     parser.add_argument('--mask_ratio', type=float, default=0.5)
     parser.add_argument('--n_tk_label', type=int, default=2)
+    
 
     parser.add_argument('--check_errors', default=False, help='check errors in the dataset', type=bool)
 
@@ -76,10 +81,11 @@ def parse_args():
     parser.add_argument('--wandb_project', type=str, default='subasa-llm', help='Weights & Biases project name')
 
     # sample command with all arguments :
-    # python main.py --intermediate mrp --mask_ratio 0.5 --n_tk_label 2 --pretrained_model xlm-roberta-base --batch_size 16 --epochs 5 --lr 0.00005 --val_int 945 --patience 3 --seed 42 --dataset sold --wandb_project subasa-llm-session1 --check_errors True
+    # python main.py --intermediate mrp --mask_ratio 0.5 --n_tk_label 2 --pretrained_model xlm-roberta-base --batch_size 16 --epochs 5 --lr 0.00005 --val_int 945 --patience 3 --seed 42 --dataset sold --wandb_project subasa-llm-session1 --check_errors True --finetuning_stage pre
 
     #### FOR STEP 2 ####
     parser.add_argument('-pf_m', '--pre_finetuned_model', required=True) # path to the pre-finetuned model
+    parser.add_argument('--label_classess', type=int, default=2) # number of classes in the dataset
 
     ## Explainability based metrics
     parser.add_argument('--top_k', default=5, help='the top num of attention values to evaluate on explainable metrics')
@@ -312,11 +318,16 @@ if __name__ == '__main__':
 
     now = datetime.now()
     args.exp_date = (now.strftime('%d%m%Y-%H%M') + '_LK')
-    args.exp_name = args.exp_date + '_'+ lm + '_' + args.intermediate +  "_"  + str(args.lr) + "_" + str(args.batch_size) + "_" + str(args.val_int)
-    
-    dir_result = os.path.join("pre_finetune", args.exp_name)
-    if not os.path.exists(dir_result):
-        os.makedirs(dir_result)
+
+    args.exp_name = f"{args.exp_date}_{lm}_{args.intermediate}_{args.lr}_{args.batch_size}_{args.val_int}"
+    if args.finetuning_stage == 'pre':
+        args.exp_name += "_pre"
+    else:
+        args.exp_name += f"_ncls{args.label_classess}_final"
+
+
+    dir_result = os.path.join(args.finetuning_stage + "_finetune", args.exp_name)
+    os.makedirs(dir_result, exist_ok=True)
 
     print("Checkpoint path: ", dir_result)
     args.dir_result = dir_result
@@ -326,5 +337,6 @@ if __name__ == '__main__':
     gc.collect()
     torch.cuda.empty_cache()
 
-    train_mrp(args)
+    if args.finetuning_stage == 'pre':
+        train_mrp(args)
 
