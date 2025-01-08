@@ -194,19 +194,22 @@ def train_mrp(args):
     for epoch in range(args.epochs):
         for i, batch in enumerate(tqdm(train_dataloader, desc="TRAINING MODEL for {} | Epoch: {}".format(args.intermediate,epoch), mininterval=0.01)):
             # each row in batch before processing is ordered as follows: (text, cls_num, final_rationales_str) : text is the tweet , cls_num is the label (0 for NOT and 1 for OFF), final_rationales_str is the rationale corresponding to the tokenized text
-            in_tensor = tokenizer(batch[0], return_tensors='pt', padding=True)
+
+            input_texts_batch, class_labels_of_texts_batch, rationales_batch = batch[0], batch[1], batch[2]
+
+            in_tensor = tokenizer(input_texts_batch, return_tensors='pt', padding=True)
             max_len = in_tensor['input_ids'].shape[1] 
             in_tensor = in_tensor.to(args.device)
 
             optimizer.zero_grad()
 
             if args.intermediate == 'rp':  
-                gts = prepare_gts(args, max_len, batch[2])
+                gts = prepare_gts(args, max_len, rationales_batch)
                 gts_tensor = torch.tensor(gts).long().to(args.device)
                 out_tensor = model(**in_tensor, labels=gts_tensor)
                 
             elif args.intermediate == 'mrp':
-                gts = prepare_gts(args, max_len, batch[2])
+                gts = prepare_gts(args, max_len, rationales_batch)
                 masked_idxs, label_reps, masked_gts = make_masked_rationale_label(args, gts, emb_layer)
                 gts_pad, masked_gts_pad, label_reps = add_pads(args, max_len, gts, masked_gts, label_reps)
 
