@@ -339,15 +339,16 @@ if __name__ == '__main__':
     now = datetime.now()
     args.exp_date = (now.strftime('%d%m%Y-%H%M') + '_LK')
 
-    args.exp_name = f"{args.exp_date}_{lm}_{args.intermediate}_{args.lr}_{args.batch_size}_{args.val_int}_seed{args.seed}"
-    if args.finetuning_stage == 'pre':
-        args.exp_name += "_pre"
-    else:
-        args.exp_name += f"_ncls{args.label_classess}_final"
+    if args.test == False:
+        args.exp_name = f"{args.exp_date}_{lm}_{args.intermediate}_{args.lr}_{args.batch_size}_{args.val_int}_seed{args.seed}"
+        if args.finetuning_stage == 'pre':
+            args.exp_name += "_pre"
+        else:
+            args.exp_name += f"_ncls{args.label_classess}_final"
 
 
-    dir_result = os.path.join(args.finetuning_stage + "_finetune", args.exp_name)
-    os.makedirs(dir_result, exist_ok=True)
+        dir_result = os.path.join(args.finetuning_stage + "_finetune", args.exp_name)
+        os.makedirs(dir_result, exist_ok=True)
 
     print("Checkpoint path: ", dir_result)
     args.dir_result = dir_result
