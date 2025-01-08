@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: BERT Finetuning",
+            "name": "Subasa: For Testing Final Model",
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
@@ -19,6 +19,31 @@
                 "--dataset", "sold",
                 "--test", "True",
                 "--model_path", "final_finetune/08012025-1353_LK_xlm-roberta-base_mrp_2e-05_16_600_seed42_ncls2_final/08012025-1353_LK_xlm-roberta-base_mrp_2e-05_16_600_seed42_ncls2_final.ckpt"
+            ]
+        },
+        {
+            "name": "Subasa: For Training MRP Model",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "--pretrained_model", "xlm-roberta-base",
+                "--intermediate", "mrp",
+                "--val_int", "3700",
+                "--patience", "3",
+                "--mask_ratio", "0.5",
+                "--n_tk_label", "2",
+                "--epochs", "5",
+                "--batch_size", "1",
+                "--lr", "0.00002",
+                "--seed", "42",
+                "--wandb_project", "subasa-xlmr-base-session1",
+                "--finetuning_stage", "pre",
+                "--dataset", "sold",
+                "--skip_empty_rat", "True",
+                // "--test", "False",
+                // "--check_errors", "False",
             ]
         }
     ]
