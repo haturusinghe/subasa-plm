@@ -84,7 +84,7 @@ def parse_args():
     # python main.py --intermediate mrp --mask_ratio 0.5 --n_tk_label 2 --pretrained_model xlm-roberta-base --batch_size 16 --epochs 5 --lr 0.00005 --val_int 945 --patience 3 --seed 42 --dataset sold --wandb_project subasa-llm-session1 --check_errors True --finetuning_stage pre
 
     #### FOR STEP 2 ####
-    parser.add_argument('-pf_m', '--pre_finetuned_model', required=True) # path to the pre-finetuned model
+    parser.add_argument('-pf_m', '--pre_finetuned_model', required=False) # path to the pre-finetuned model
     parser.add_argument('--label_classess', type=int, default=2) # number of classes in the dataset
 
     ## Explainability based metrics
