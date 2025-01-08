@@ -630,6 +630,18 @@ def test_for_hate_speech(args):
     log.write("Acc: {} | F1: {} | AUROC: {} \n".format(acc[0], per_based_scores[0], per_based_scores[1]))
     log.close()
 
+    # Log metrics to wandb
+    wandb.log({
+        "test/Loss_avg": loss_avg,
+        "test/Loss_min": min(losses),
+        "test/Loss_max": max(losses),
+        "test/accuracy": acc[0],
+        "test/f1": per_based_scores[0],
+        "test/auroc": per_based_scores[1],
+        "test/time": time_avg,
+        "test/classification_report": class_report,
+    })
+
     if args.explain_sold:
         
         with open(args.dir_result + '/for_explain_union.json', 'w') as f:
