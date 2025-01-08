@@ -102,3 +102,40 @@ def save_checkpoint(args, losses, model_state, trained_model):
             torch.save(model_state.state_dict(), os.path.join(args.dir_result, emb_file_name))
 
         print("[!] The best checkpoint is updated")
+
+def load_checkpoint(args, load_best=True, path=None):
+    """Load saved checkpoint including model, embedding layer 
+    
+    Args:
+        args: Arguments containing experiment info
+        load_best: Whether to load the best checkpoint
+        path (str): Path to the saved checkpoint
+    
+    Returns:
+        model: Loaded model
+        embedding_layer: Loaded embedding layer (if MRP)
+    """
+
+    if path is not None:
+        # pre_finetune/08012025-0942_LK_xlm-roberta-base_mrp_5e-05_16_600_seed42_pre/08012025-0942_LK_xlm-roberta-base_mrp_5e-05_16_600_seed42_pre.ckpt
+        model_path = path + path.split('/')[-1] + '.ckpt'
+        emb_path = path + '_emb.ckpt'
+
+        if load_best:
+            model_path = path + 'BEST_' + path.split('/')[-1] + '.ckpt'
+
+
+    # Load the model
+    model = None
+    embedding_layer = None
+    if args.intermediate == 'rp':
+        model = XLMRobertaForTokenClassification.from_pretrained(model_path)
+    elif args.intermediate == 'mrp':
+        model = XLMRobertaCustomForTCwMRP.from_pretrained(model_path)
+        embedding_layer = nn.Embedding(args.n_tk_label, 768)
+        embedding_layer.load_state_dict(torch.load(emb_path))
+
+    if model is None:
+        raise ValueError("Failed to load model from " + model_path)
+        
+    return model, embedding_layer
