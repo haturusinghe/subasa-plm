@@ -58,7 +58,7 @@ def parse_args():
 
     # TESTING 
     parser.add_argument('--test', default=False, help='test the model', type=bool)
-    parser.add_argument('--model_path', type=str, required=False, help='the checkpoint path to test')
+    parser.add_argument('--model_path', type=str, required=False, help='the checkpoint path to test', default=None)
 
     # PRETRAINED MODEL
     model_choices = ['xlm-roberta-large', 'xlm-roberta-base' ]
@@ -87,7 +87,7 @@ def parse_args():
     parser.add_argument('--save_to_hf', default=False, help='save the model to huggingface', type=bool)
     
     #### FOR STEP 2 ####
-    parser.add_argument('--pre_finetuned_model', required=False) # path to the pre-finetuned model
+    parser.add_argument('--pre_finetuned_model', required=False, default=None) # path to the pre-finetuned model
     parser.add_argument('--label_classess', type=int, default=2) # number of classes in the dataset
 
     ## Explainability based metrics
