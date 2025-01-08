@@ -458,6 +458,54 @@ def train_offensive_detection(args):
         for i, batch in enumerate(tqdm(train_dataloader, desc="TRAINING (Phase 2 for OffensiveDetection) | Epoch: {}".format(epoch), mininterval=0.01)):  # data: (post_words, target_rat, post_id)
             input_texts_batch, class_labels_of_texts_batch, ids_batch = batch[0], batch[1], batch[2]
 
+            in_tensor = tokenizer(input_texts_batch, return_tensors='pt', padding=True)
+            in_tensor = in_tensor.to(args.device)
+            gts_tensor = class_labels_of_texts_batch.to(args.device)
+
+            optimizer.zero_grad()
+
+            out_tensor = model(**in_tensor, labels=gts_tensor)  
+            loss = out_tensor.loss
+            
+            loss.backward()
+            optimizer.step()
+            get_tr_loss.add(loss)
+
+            # Validation 
+            if i==0 or (i+1) % args.val_int == 0:
+                _, loss_avg, acc_avg, per_based_scores, time_avg, _ , class_report = evaluate_for_hatespeech(args, model, val_dataloader, tokenizer)
+
+                args.n_eval += 1
+                model.train()
+
+                val_losses.append(loss_avg[0])
+                val_accs.append(acc_avg[0])
+                val_f1s.append(per_based_scores[0])
+
+                tr_loss = get_tr_loss.aver()
+                tr_losses.append(tr_loss) 
+                get_tr_loss.reset()
+
+                print("[Epoch {} | Val #{}]".format(epoch, args.n_eval))
+                print("* tr_loss: {}".format(tr_loss))
+                print("* val_loss: {} | val_consumed_time: {}".format(loss_avg[0], time_avg))
+                print("* acc: {} | f1: {} | AUROC: {}\n".format(acc_avg[0], per_based_scores[0], per_based_scores[1]))
+                
+                log.write("[Epoch {} | Val #{}]\n".format(epoch, args.n_eval))
+                log.write("* tr_loss: {}\n".format(tr_loss))
+                log.write("* val_loss: {} | val_consumed_time: {}\n".format(loss_avg[0], time_avg))
+                log.write("* acc: {} | f1: {} | AUROC: {}\n\n".format(acc_avg[0], per_based_scores[0], per_based_scores[1]))
+
+                save_checkpoint(args, val_losses, None, model)
+
+            if args.waiting > args.patience:
+                print("[!] Early stopping")
+                break
+        if args.waiting > args.patience:
+            break
+
+    log.close() 
+
 
 def load_model_train(args):
     tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
