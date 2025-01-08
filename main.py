@@ -55,7 +55,11 @@ def parse_args():
     # EXPERIMENT FINETUNING STAGE
     finetuning_stage_choices = ['pre', 'final']
     parser.add_argument('--finetuning_stage', default='pre', choices=finetuning_stage_choices, help='a finetuning stage to use')
-    
+
+    # TESTING 
+    parser.add_argument('--test', default=False, help='test the model', type=bool)
+    parser.add_argument('--model_path', type=str, required=False, help='the checkpoint path to test')
+
     # PRETRAINED MODEL
     model_choices = ['xlm-roberta-large', 'xlm-roberta-base' ]
     parser.add_argument('--pretrained_model', default='xlm-roberta-base', choices=model_choices, help='a pre-trained model to use')  
@@ -320,7 +324,6 @@ def test_mrp(args):
 
 if __name__ == '__main__':
     args = parse_args()
-    args.test = False
     args.device = get_device()
 
     lm = '-'.join(args.pretrained_model.split('-')[:])
@@ -346,6 +349,12 @@ if __name__ == '__main__':
     gc.collect()
     torch.cuda.empty_cache()
 
-    if args.finetuning_stage == 'pre':
+    if args.finetuning_stage == 'pre' and args.test == False:
         train_mrp(args)
+    elif args.finetuning_stage == 'pre' and args.test == True:
+        if args.model_path is not None:
+            args.dir_result = '/'.join(args.model_path.split('/')[:-1])
+            print("Checkpoint path: ", args.model_path)
+            print("Result path: ", args.dir_result)
+            # test_mrp(args)
 
