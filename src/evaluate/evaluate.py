@@ -171,3 +171,66 @@ def evaluate_for_hatespeech(args, model, dataloader, tokenizer):
 
 
 
+def get_dict_for_explain(args, model, tokenizer, in_tensor, gts_tensor, attns, id, pred_cls, pred_prob):
+    explain_dict = {}
+    explain_dict["annotation_id"] = id
+    explain_dict["classification"] = pred_cls 
+    explain_dict["classification_scores"] = {"NOT": pred_prob[0], "OFF": pred_prob[1]}
+    
+    attns = np.mean(attns[:,:,0,:].detach().cpu().numpy(),axis=1).tolist()[0]
+    top_indices = sorted(range(len(attns)), key=lambda i: attns[i])[-args.top_k:]  # including start/end token ?
+    temp_hard_rationale = []
+    for ind in top_indices:
+        temp_hard_rationale.append({'end_token':ind+1, 'start_token':ind})
+
+    gt = gts_tensor.detach().cpu().tolist()[0]
+    
+    explain_dict["rationales"] = [{"docid": id, 
+                                "hard_rationale_predictions": temp_hard_rationale, 
+                                "soft_rationale_predictions": attns,
+                                #"soft_sentence_predictions": [1.0],
+                                #"truth": gts_tensor.detach().cpu().tolist()[0]}, 
+                                "truth": gt, 
+                                }]
+
+    in_ids = in_tensor['input_ids'].detach().cpu().tolist()[0]
+    
+    in_ids_suf, in_ids_com = [], []
+    for i in range(len(attns)):
+        if i in top_indices:
+            in_ids_suf.append(in_ids[i])
+        else:
+            in_ids_com.append(in_ids[i])
+
+    suf_tokens = tokenizer.convert_ids_to_tokens(in_ids_suf)
+    suf_text = tokenizer.convert_tokens_to_string(suf_tokens)
+    suf_text = suf_text.lower()
+    in_ids_suf = tokenizer.encode(suf_text)
+
+    in_ids_com = [101]+in_ids_com[1:-1]+[102]
+  
+    in_ids_suf = torch.tensor(in_ids_suf)
+    in_ids_suf = torch.unsqueeze(in_ids_suf, 0).to(args.device)
+    in_ids_com = torch.tensor(in_ids_com)
+    in_ids_com = torch.unsqueeze(in_ids_com, 0).to(args.device)
+    
+    in_tensor_suf = {'input_ids': in_ids_suf, 
+                    'token_type_ids': torch.zeros(in_ids_suf.shape, dtype=torch.int).to(args.device), 
+                    'attention_mask': torch.ones(in_ids_suf.shape, dtype=torch.int).to(args.device)}
+    in_tensor_com = {'input_ids': in_ids_com, 
+                    'token_type_ids': torch.zeros(in_ids_com.shape, dtype=torch.int).to(args.device), 
+                    'attention_mask': torch.ones(in_ids_com.shape, dtype=torch.int).to(args.device)}
+    
+    out_tensor_suf = model(**in_tensor_suf, labels=gts_tensor)  
+    prob_suf = F.softmax(out_tensor_suf.logits, dim=1).detach().cpu().tolist()[0]
+    try:
+        out_tensor_com = model(**in_tensor_com, labels=gts_tensor) 
+    except:
+        print(id)
+
+    prob_com = F.softmax(out_tensor_com.logits, dim=1).detach().cpu().tolist()[0]
+    
+    explain_dict['sufficiency_classification_scores'] = {"NOT": prob_suf[0], "OFF": prob_suf[1]}
+    explain_dict['comprehensiveness_classification_scores'] = {"NOT": prob_com[0], "OFF": prob_com[1]}
+    
+    return explain_dict
