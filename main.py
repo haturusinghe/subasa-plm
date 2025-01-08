@@ -84,7 +84,7 @@ def parse_args():
     
 
     # sample command with all arguments :
-    # python main.py --intermediate mrp --mask_ratio 0.5 --n_tk_label 2 --pretrained_model xlm-roberta-base --batch_size 16 --epochs 5 --lr 0.00005 --val_int 945 --patience 3 --seed 42 --dataset sold --wandb_project subasa-llm-session1 --finetuning_stage pre --skip_empty_rat True --check_errors True
+    # python main.py --intermediate mrp --mask_ratio 0.5 --n_tk_label 2 --pretrained_model xlm-roberta-base --batch_size 16 --epochs 5 --lr 0.00005 --val_int 600 --patience 3 --seed 42 --dataset sold --wandb_project subasa-llm-session1 --finetuning_stage pre --skip_empty_rat True --check_errors True
 
     #### FOR STEP 2 ####
     parser.add_argument('-pf_m', '--pre_finetuned_model', required=False) # path to the pre-finetuned model
@@ -184,9 +184,6 @@ def train_mrp(args):
     steps_per_epoch = ceil(len(train_dataset) / args.batch_size)
     print("Steps per epoch: ", steps_per_epoch)
 
-    # calculate validation interval based on steps per epoch
-    dyanamic_val_int = floor(steps_per_epoch / 3) - 3
-
     for epoch in range(args.epochs):
         for i, batch in enumerate(tqdm(train_dataloader, desc="TRAINING MODEL for {} | Epoch: {}".format(args.intermediate,epoch), mininterval=0.01)):
             # each row in batch before processing is ordered as follows: (text, cls_num, final_rationales_str) : text is the tweet , cls_num is the label (0 for NOT and 1 for OFF), final_rationales_str is the rationale corresponding to the tokenized text
@@ -216,15 +213,15 @@ def train_mrp(args):
             optimizer.step()
             get_tr_loss.add(loss)
 
-            # Log training metrics
-            wandb.log({
-                "train/loss": loss.item(),
-                "train/learning_rate": optimizer.param_groups[0]['lr'],
-                "epoch": epoch,
-            })
+            # # Log training metrics
+            # wandb.log({
+            #     "train/loss": loss.item(),
+            #     "train/learning_rate": optimizer.param_groups[0]['lr'],
+            #     "epoch": epoch,
+            # })
 
             # validation model during training
-            if i == 0 or (i+1) % dyanamic_val_int == 0:
+            if i == 0 or (i+1) % args.val_int == 0:
                 _, val_loss, val_time, acc, f1 = evaluate(args, model, val_dataloader, tokenizer, emb_layer, mlb)
 
                 args.n_eval += 1
