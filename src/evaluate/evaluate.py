@@ -162,9 +162,8 @@ def evaluate_for_hatespeech(args, model, dataloader, tokenizer):
     acc = [accuracy_score(total_gt_clses, total_pred_clses)]
     f1 = f1_score(total_gt_clses, total_pred_clses, average='macro')
     class_report = classification_report(total_gt_clses, total_pred_clses, output_dict=True)
-    # auroc = roc_auc_score(total_gt_clses, total_probs, multi_class='ovo')
     auroc = None
-    explain_dict_list = "#TODO"
+    # auroc = roc_auc_score(total_gt_clses, total_probs)
     per_based_scores = [f1, auroc]
 
     return losses, loss_avg, acc, per_based_scores, time_avg, explain_dict_list, class_report
