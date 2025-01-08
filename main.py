@@ -489,6 +489,19 @@ def train_offensive_detection(args):
                 log.write("* val_loss: {} | val_consumed_time: {}\n".format(loss_avg[0], time_avg))
                 log.write("* acc: {} | f1: {} | AUROC: {}\n\n".format(acc_avg[0], per_based_scores[0], per_based_scores[1]))
 
+                # Log metrics to wandb
+                wandb.log({
+                    "train/loss": tr_loss,
+                    "val/loss": loss_avg[0],
+                    "val/accuracy": acc_avg[0],
+                    "val/f1": per_based_scores[0],
+                    "val/auroc": per_based_scores[1],
+                    "val/time": time_avg,
+                    "val/classification_report": class_report,
+                    "epoch": epoch,
+                    "learning_rate": optimizer.param_groups[0]['lr']
+                })
+
                 save_checkpoint(args, val_losses, None, model)
 
             if args.waiting > args.patience:
