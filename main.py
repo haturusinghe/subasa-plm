@@ -328,8 +328,12 @@ def test_mrp(args):
 
     model.to(args.device)
     log = open(os.path.join(args.dir_result, 'test_res.txt'), 'a')
+
+    # calculate total number of steps per epoch
+    steps_per_epoch = ceil(len(test_dataset) / args.batch_size)
+    print("Steps per epoch (testing): ", steps_per_epoch)
     
-    losses, loss_avg, time_avg, acc, f1 = evaluate(args, model, test_dataloader, tokenizer, None, mlb)
+    losses, loss_avg, time_avg, acc, f1, report, report_for_masked = evaluate(args, model, test_dataloader, tokenizer, emb_layer, mlb)
 
     print("\nCheckpoint: ", args.model_path)
     print("Loss_avg: {} / min: {} / max: {} | Consumed_time: {}".format(loss_avg, min(losses), max(losses), time_avg))
