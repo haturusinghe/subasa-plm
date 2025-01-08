@@ -1,74 +1,99 @@
-# Subasa-LLM
+# SUBASA - Offensive Language Detection in Sinhala
 
-Adapting Language Models for Low Resourced Offensive Language Detection in Sinhala
+This project focuses on adapting Language Models for Low-Resourced Offensive Language Detection in Sinhala using pretrained models and intermediate tasks.
 
-## Installation
+## Setup
 
 ```bash
 # Create and activate virtual environment
 python -m venv env
-source env/bin/activate  # On Windows, use `env\Scripts\activate`
+source env/bin/activate
 
-# Install requirements
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-## Usage
+## Project Structure
 
-The training process consists of two stages:
+```
+subasa-llm/
+├── main.py           # Main training and evaluation script
+├── src/             
+│   ├── config/      # Configuration files
+│   ├── dataset/     # Dataset loading and processing
+│   ├── evaluate/    # Evaluation metrics and functions
+│   ├── models/      # Custom model implementations
+│   └── utils/       # Helper functions and utilities
+```
 
-### 1. Pre-finetuning Stage
+## Training
 
-For pre-finetuning with Masked Rationale Prediction (MRP):
+The project supports two finetuning stages:
+1. Pre-finetuning with intermediate tasks (MRP or RP)
+2. Final finetuning for offensive language detection
+
+### Pre-finetuning Stage
 
 ```bash
 python main.py \
+    --finetuning_stage pre \
     --intermediate mrp \
-    --mask_ratio 0.5 \
-    --n_tk_label 2 \
     --pretrained_model xlm-roberta-base \
     --batch_size 16 \
     --epochs 5 \
     --lr 0.00005 \
     --val_int 945 \
     --patience 3 \
-    --seed 42 \
-    --dataset sold \
-    --wandb_project your-project-name \
-    --finetuning_stage pre
+    --mask_ratio 0.5 \
+    --n_tk_label 2
 ```
 
-For Rationale Prediction (RP):
-```bash
-python main.py \
-    --intermediate rp \
-    # ...other parameters same as above...
-```
-
-### 2. Final Finetuning Stage
+### Final Finetuning Stage
 
 ```bash
 python main.py \
-    --intermediate mrp \
-    --pre_finetuned_model path/to/pre-finetuned/model \
-    --label_classess 2 \
     --finetuning_stage final \
-    # ...other parameters same as pre-finetuning...
+    --pre_finetuned_model /path/to/pretrained/model \
+    --pretrained_model xlm-roberta-base \
+    --batch_size 16 \
+    --epochs 5 \
+    --lr 0.00005 \
+    --val_int 945 \
+    --patience 3 \
+    --label_classess 2
 ```
 
-## Parameters
+## Testing
 
-- `--intermediate`: Choice of intermediate task (`mrp` or `rp`)
-- `--mask_ratio`: Ratio of tokens to mask (default: 0.5)
-- `--n_tk_label`: Number of token labels (default: 2)
-- `--pretrained_model`: Base model (`xlm-roberta-base` or `xlm-roberta-large`)
-- `--batch_size`: Training batch size (default: 16)
-- `--epochs`: Number of training epochs (default: 5)
-- `--lr`: Learning rate (default: 0.00005)
-- `--val_int`: Validation interval (default: 945)
-- `--patience`: Early stopping patience (default: 3)
+To evaluate a trained model:
+
+```bash
+python main.py \
+    --test True \
+    --model_path /path/to/checkpoint \
+    --intermediate mrp \
+    --batch_size 16
+```
+
+## Configuration Options
+
 - `--seed`: Random seed (default: 42)
-- `--dataset`: Dataset choice (`sold` or `hatexplain`)
+- `--dataset`: Dataset choice ('sold' or 'hatexplain')
+- `--finetuning_stage`: Training stage ('pre' or 'final')
+- `--pretrained_model`: Base model ('xlm-roberta-large' or 'xlm-roberta-base')
+- `--intermediate`: Intermediate task ('mrp' or 'rp')
+- `--mask_ratio`: Mask ratio for MRP task (default: 0.5)
 - `--wandb_project`: Weights & Biases project name
-- `--finetuning_stage`: Training stage (`pre` or `final`)
-- `--label_classess`: Number of classes in dataset (default: 2)
+- `--top_k`: Top k attention values for explainable metrics
+- `--lime_n_sample`: Number of samples for LIME explainer
+
+## Metrics and Logging
+
+- Training metrics are logged to Weights & Biases
+- Results are saved in experiment-specific directories
+- Evaluation includes:
+  - Accuracy
+  - F1 Score
+  - Classification Reports
+  - AUROC (for final stage)
+
