@@ -8,8 +8,7 @@ def setup_logging(log_dir: str = "logs"):
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler(f"{log_dir}/training.log"),
-            logging.StreamHandler()
+            logging.FileHandler(f"{log_dir}/training.log")
         ]
     )
 
