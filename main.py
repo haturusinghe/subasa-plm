@@ -294,14 +294,38 @@ def train_mrp(args):
 
 
 def test_mrp(args):
+
+    set_seed(args.seed)
+    model_path, emb_path , model_path_best = get_checkpoint_path(args)
+
     tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
     model = XLMRobertaForTokenClassification.from_pretrained(args.model_path) 
     tokenizer = add_tokens_to_tokenizer(args, tokenizer)
+
+    if args.intermediate == 'rp':
+        model = XLMRobertaForTokenClassification.from_pretrained(model_path_best)
+        emb_layer = None
+    elif args.intermediate == 'mrp':
+        model = XLMRobertaCustomForTCwMRP.from_pretrained(model_path_best) 
+        emb_layer = nn.Embedding(args.n_tk_label, 768)
+        # Load the state dictionary
+        loaded_state_dict = torch.load(emb_path)
+
+        # Apply to an embedding layer
+        emb_layer.load_state_dict(loaded_state_dict)
+
+        model.config.output_attentions=True
+
+    model.resize_token_embeddings(len(tokenizer))
     
     test_dataset = SOLDDataset(args, 'test')
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
     
     mlb = MultiLabelBinarizer()
+    
+    if args.intermediate == 'mrp':
+        emb_layer.to(args.device)
+
     model.to(args.device)
     log = open(os.path.join(args.dir_result, 'test_res.txt'), 'a')
     
