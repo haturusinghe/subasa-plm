@@ -63,8 +63,8 @@ class SOLDDataset(Dataset):
             for j in rm_idxs:
                 removed_items.append(self.dataset[j])
                 del self.dataset[j]
-            
-            self.logger.info(f"Mode {mode}\n removed : {str(removed_items)}")
+            self.logger.info(f"[DATASET] [MODE: {mode}] [SKIP_EMPTY_RAT] Removed {len(removed_items)} items")
+            self.logger.info(f"[DATASET] [MODE: {mode}] [REMOVED_ITEMS] {str(removed_items)}")
         
         self.mode = mode
         self.intermediate = args.intermediate

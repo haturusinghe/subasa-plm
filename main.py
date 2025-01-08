@@ -98,7 +98,7 @@ def parse_args():
 def train_mrp(args):
     # Setup logging
     logger = setup_logging()
-    logger.info("Starting with args: {}".format(args))
+    logger.info("[START] Starting with args: {}".format(args))
 
     # Initialize wandb
     wandb.init(
