@@ -17,6 +17,18 @@ class XLMRobertaCustomForTCwMRP(XLMRobertaForTokenClassification):
     def __init__(self, config):
         super().__init__(config)
         self.roberta = XLMRobertaModelForMRP(config, add_pooling_layer=False)
+        # we can use our custom classifier by overriding the classifier layer, for example we can use a CNN classifier like follows:
+        # self.classifier = nn.Sequential(
+        #     nn.Conv1d(config.hidden_size, 128, kernel_size=3, padding=1),
+        #     nn.ReLU(),
+        #     nn.Conv1d(128, 64, kernel_size=3, padding=1),
+        #     nn.ReLU(),
+        #     nn.Conv1d(64, config.num_labels, kernel_size=3, padding=1),
+        # )
+        # self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        # self.init_weights()
+
+
     
     def forward(self,
         input_ids=None,
@@ -54,7 +66,7 @@ class XLMRobertaCustomForTCwMRP(XLMRobertaForTokenClassification):
         loss = None
         if labels is not None:
             loss_fct = CrossEntropyLoss()
-            loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
+            loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1)) # the "labels" tensor has -100 values for non-maksed token labels, since -100 is the default ignore_index in PyTorch’s CrossEntropyLoss. So, any token with a label of -100 will be ignored in loss computation
 
         if not return_dict:
             output = (logits,) + outputs[2:]
@@ -158,6 +170,7 @@ class XLMRobertaModelForMRP(XLMRobertaModel):
 
         embedding_output += label_reps  # masked labels
         # add the embeddings of the masked tokens to the input embeddings
+        # can explore alternative ways of combining the rationale token embeddings with the input embeddings (e.g. concatenation)
 
         encoder_outputs = self.encoder(
             embedding_output,
