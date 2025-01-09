@@ -60,13 +60,14 @@ def evaluate(args, model, dataloader, tokenizer, emb_layer, mlb):
                 in_tensor['label_reps'] = label_reps
 
                 start_time = time.time()
-                out_tensor = model(**in_tensor, labels=gts_tensor)
+                out_tensor = model(**in_tensor, labels=gts_tensor) #-100 values in the gts_tensor are a flag to ignore them during loss calculation
                 consumed_time += time.time() - start_time
 
             loss = out_tensor.loss.item()
             logits = out_tensor.logits
-            pred_probs = F.softmax(logits, dim=2)
-
+            pred_probs = F.softmax(logits, dim=2) 
+            # pred_probs is a tensor of shape (batch_size, max_len, num_labels) where num_labels is the number of classes in the dataset
+            # pred_probs contains the probabilities of each token in the input sequence belonging to each class in the dataset. example : [[0.1, 0.9], [0.8, 0.2], [0.3, 0.7]] where 0.1 is the probability of the first token in the input sequence belonging to class 0 and 0.9 is the probability of the first token in the input sequence belonging to class 1
             losses.append(loss)
             
             if args.intermediate == 'rp':
@@ -105,7 +106,7 @@ def evaluate(args, model, dataloader, tokenizer, emb_layer, mlb):
     if args.intermediate == 'rp':
         all_gts = mlb.fit_transform(all_gts)
         all_pred_clses = mlb.fit_transform(all_pred_clses)
-    acc = [accuracy_score(all_gts, all_pred_clses)]
+    acc = [accuracy_score(all_gts, all_pred_clses)] #all_gts and all_pred_clses are lists all ground truth and predicted labels respectively concatanated across all batches into a single list
     f1 = [f1_score(all_gts, all_pred_clses, average='macro')]
     report = classification_report(all_gts, all_pred_clses, output_dict=True)
     
