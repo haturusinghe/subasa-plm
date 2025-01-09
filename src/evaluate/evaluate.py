@@ -15,14 +15,14 @@ from src.utils.prefinetune_utils import prepare_gts, make_masked_rationale_label
 import wandb
 
 def get_pred_cls(logits):
-    probs = F.softmax(logits, dim=1)
+    probs = F.softmax(logits, dim=1) #dim=1 because the logits are of shape (batch_size, num_labels)
     #labels = labels.detach().cpu().numpy()
     probs = probs.detach().cpu().numpy()
-    max_probs = np.max(probs, axis=1).tolist()
-    probs = probs.tolist()
+    max_probs = np.max(probs, axis=1).tolist() # we use this to get only the probabilities of the predicted classes, not all classes
+    probs = probs.tolist() 
     pred_clses = []
     for m, p in zip(max_probs, probs):
-        pred_clses.append(p.index(m))
+        pred_clses.append(p.index(m)) # index of the maximum probability in the list of probabilities , which is actually the predicted class 0 (NOT) or 1(OFF)
     
     return probs, pred_clses
 
