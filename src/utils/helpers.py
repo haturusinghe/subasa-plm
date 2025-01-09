@@ -92,7 +92,7 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
         tokenizer.save_pretrained(save_directory=save_path)
     
     # Save metrics to a text file in a readable format
-    metrics_file = os.path.join(args.dir_result, 'metrics_' + file_name.replace('.ckpt', '.txt'))
+    metrics_file = os.path.join(args.dir_result, file_name ,'metrics.txt')
     with open(metrics_file, 'w') as f:
         # Write main metrics
         f.write(f"Validation Loss: {metrics['val/loss']:.6f}\n")
@@ -112,23 +112,17 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
         
         f.write(f"\n\nEpoch: {metrics['epoch']}\n")
         f.write(f"Step: {metrics['step']}\n")
+    
+    if args.intermediate == 'mrp':
+        # Save the embedding layer params
+        emb_file_name = file_name + '_emb_layer_states.ckpt'
+        emb_save_path = os.path.join(args.dir_result, emb_file_name)
+        torch.save(embedding_layer.state_dict(), emb_save_path)
 
     args.waiting += 1
     if losses[-1] <= min(losses):
         print(f"[!] Loss has been decreased from {losses[-2] if len(losses) > 1 else losses[-1]:.6f} to {losses[-1]:.6f}")
         args.waiting = 0
-        best_path = os.path.join(args.dir_result, 'BEST_LOSS_' + file_name)
-        trained_model.save_pretrained(save_directory=best_path)
-        if tokenizer:
-            tokenizer.save_pretrained(save_directory=best_path)
-        
-        if args.intermediate == 'mrp':
-            # Save the embedding layer params
-            emb_file_name = 'emb_layer_' + file_name
-            emb_save_path = os.path.join(args.dir_result, emb_file_name)
-            torch.save(embedding_layer.state_dict(), emb_save_path)
-
-        print("[!] The best checkpoint is updated")
 
 def load_checkpoint(args, load_best=True, path=None):
     """Load saved checkpoint including model, embedding layer 
