@@ -413,7 +413,7 @@ def test_mrp(args):
 def train_offensive_detection(args):
     # Setup logging
     logger = setup_logging()
-    logger.info("[START] [FINAL TRAIN HS] Starting with args: {}".format(args))
+    logger.info("[START] [FINAL] [OFFENSIVE_LANG_DET] Starting with args: {}".format(args))
 
     # Initialize wandb
     wandb.init(
@@ -431,8 +431,10 @@ def train_offensive_detection(args):
             "skip_empty_rat": args.skip_empty_rat,
             "check_errors": args.check_errors,
             "label_classes": args.num_labels,
+            "skip_empty_rat": args.skip_empty_rat,
             "pre_finetuned_model": args.pre_finetuned_model,
             "test": args.test,
+            "explain_sold": args.explain_sold,
         },
         name=args.exp_name
     )
@@ -481,6 +483,11 @@ def train_offensive_detection(args):
             if i==0 or (i+1) % args.val_int == 0:
                 _, loss_avg, acc_avg, per_based_scores, time_avg, _ , class_report = evaluate_for_hatespeech(args, model, val_dataloader, tokenizer)
 
+                f1_macro, auroc, wandb_roc_curve, roc_curve_values = per_based_scores
+
+                # Unpack the ROC curve values
+                fpr, tpr, thresholds = roc_curve_values
+
                 args.n_eval += 1
                 model.train()
 
@@ -496,14 +503,17 @@ def train_offensive_detection(args):
                 print("* tr_loss: {}".format(tr_loss))
                 print("* val_loss: {} | val_consumed_time: {}".format(loss_avg[0], time_avg))
                 print("* acc: {} | f1: {} | AUROC: {}\n".format(acc_avg[0], per_based_scores[0], per_based_scores[1]))
+                # print classification report in terminal
+                print("Classification Report:\n", class_report)
+
                 
                 log.write("[Epoch {} | Val #{}]\n".format(epoch, args.n_eval))
                 log.write("* tr_loss: {}\n".format(tr_loss))
                 log.write("* val_loss: {} | val_consumed_time: {}\n".format(loss_avg[0], time_avg))
                 log.write("* acc: {} | f1: {} | AUROC: {}\n\n".format(acc_avg[0], per_based_scores[0], per_based_scores[1]))
+                log.write("Classification Report:\n{}\n".format(class_report))
 
-                # Log metrics to wandb
-                wandb.log({
+                metrics = {
                     "train/loss": tr_loss,
                     "val/loss": loss_avg[0],
                     "val/accuracy": acc_avg[0],
@@ -512,9 +522,14 @@ def train_offensive_detection(args):
                     "val/time": time_avg,
                     "val/classification_report": class_report,
                     "epoch": epoch,
-                })
+                    "step": i,
+                }
 
-                save_checkpoint(args, val_losses, None, model)
+                # Log metrics to wandb
+                wandb.log(metrics)
+                # wandb.log({"val/roc" : wandb_roc_curve})
+
+                save_checkpoint(args, val_losses, None, model, metrics=metrics)
 
             if args.waiting > args.patience:
                 print("[!] Early stopping")
