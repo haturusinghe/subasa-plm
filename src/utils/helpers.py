@@ -83,31 +83,50 @@ class GetLossAverage(object):
         return res
 
 
-def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None):
-    # checkpoint = {
-    #     'args': args,
-    #     'model_state': model_state,
-    #     'optimizer_state': optimizer_state
-    # }
-    file_name = args.exp_name + '.ckpt'
+def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None, metrics=None):
+
+    file_name = f"{args.pretrained_model}_{args.intermediate}_val_loss_{metrics['val/loss']:.6f}_ep{metrics['epoch']}_stp{metrics['step']}_f1_{metrics['val/f1']:.6f}.ckpt"
     save_path = os.path.join(args.dir_result, file_name)
     trained_model.save_pretrained(save_directory=save_path)
     if tokenizer:
         tokenizer.save_pretrained(save_directory=save_path)
+    
+    # Save metrics to a text file in a readable format
+    metrics_file = os.path.join(args.dir_result, 'metrics_' + file_name.replace('.ckpt', '.txt'))
+    with open(metrics_file, 'w') as f:
+        # Write main metrics
+        f.write(f"Validation Loss: {metrics['val/loss']:.6f}\n")
+        f.write(f"Validation Accuracy: {metrics['val/accuracy']:.6f}\n")
+        f.write(f"Validation F1: {metrics['val/f1']:.6f}\n")
+        f.write(f"Validation Time: {metrics['val/time']:.2f}s\n")
+        f.write("\nClassification Report:\n")
+        f.write(str(metrics['val/classification_report']))
+        
+        # Write MRP specific metrics if present
+        if 'val/masked_accuracy' in metrics:
+            f.write("\n\nMasked Metrics:\n")
+            f.write(f"Masked Accuracy: {metrics['val/masked_accuracy']:.6f}\n")
+            f.write(f"Masked F1: {metrics['val/masked_f1']:.6f}\n")
+            f.write("\nMasked Classification Report:\n")
+            f.write(str(metrics['val/masked_classification_report']))
+        
+        f.write(f"\n\nEpoch: {metrics['epoch']}\n")
+        f.write(f"Step: {metrics['step']}\n")
 
     args.waiting += 1
     if losses[-1] <= min(losses):
-        print("Loss has been decreased from {:.6f} to {:.6f}".format(min(losses[:-1]) if len(losses) > 1 else losses[-1], losses[-1]))
+        print(f"[!] Loss has been decreased from {losses[-2] if len(losses) > 1 else losses[-1]:.6f} to {losses[-1]:.6f}")
         args.waiting = 0
-        best_path = os.path.join(args.dir_result, 'BEST_' + file_name)
+        best_path = os.path.join(args.dir_result, 'BEST_LOSS_' + file_name)
         trained_model.save_pretrained(save_directory=best_path)
         if tokenizer:
             tokenizer.save_pretrained(save_directory=best_path)
         
         if args.intermediate == 'mrp':
             # Save the embedding layer params
-            emb_file_name = args.exp_name + '_emb.ckpt'
-            torch.save(embedding_layer.state_dict(), os.path.join(args.dir_result, emb_file_name))
+            emb_file_name = 'emb_layer_' + file_name
+            emb_save_path = os.path.join(args.dir_result, emb_file_name)
+            torch.save(embedding_layer.state_dict(), emb_save_path)
 
         print("[!] The best checkpoint is updated")
 
