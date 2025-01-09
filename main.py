@@ -697,7 +697,7 @@ if __name__ == '__main__':
         elif args.finetuning_stage == 'final':
             args.intermediate = False
             print("Pre-finetuned model path: ", args.pre_finetuned_model)
-            args.exp_name += f"_ncls{args.num_labels}_final"
+            args.exp_name += f"_final"
             args.num_labels = int(args.num_labels)
 
 
