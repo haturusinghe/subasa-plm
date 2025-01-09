@@ -68,15 +68,18 @@ Finetune for offensive language detection:
 
 ```bash
 python main.py \
-    --finetuning_stage final \
-    --pre_finetuned_model path/to/pretrained/model \
     --pretrained_model xlm-roberta-base \
-    --batch_size 16 \
-    --epochs 5 \
-    --lr 0.00005 \
-    --val_int 945 \
+    --val_int 250 \
     --patience 3 \
-    --num_labels 2
+    --epochs 5 \
+    --batch_size 16 \
+    --lr 0.00002 \
+    --seed 42 \
+    --wandb_project your-wandb-project-name \
+    --finetuning_stage final \
+    --dataset sold \
+    --num_labels 2 \
+    --pre_finetuned_model path/to/prefinetuned/checkpoint
 ```
 
 ## Evaluation
