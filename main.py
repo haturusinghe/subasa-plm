@@ -235,6 +235,7 @@ def train_mrp(args):
             # })
 
             # validation model during training
+            # TODO : Make sure there is a final validation right after the end of the final epoch
             if i == 0 or (i+1) % args.val_int == 0:
                 _, val_loss, val_time, acc, f1, report, report_for_masked  = evaluate(args, model, val_dataloader, tokenizer, emb_layer, mlb) # report and report_for_masked are classification reports from sklearn
 
@@ -480,6 +481,7 @@ def train_offensive_detection(args):
             get_tr_loss.add(loss)
 
             # Validation 
+            # TODO : Make sure there is a final validation right after the end of the final epoch
             if i==0 or (i+1) % args.val_int == 0:
                 _, loss_avg, acc_avg, per_based_scores, time_avg, _ , class_report = evaluate_for_hatespeech(args, model, val_dataloader, tokenizer)
 
