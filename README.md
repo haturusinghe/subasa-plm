@@ -45,16 +45,21 @@ Train with intermediate tasks (MRP or RP):
 
 ```bash
 python main.py \
-    --finetuning_stage pre \
-    --intermediate mrp \
     --pretrained_model xlm-roberta-base \
-    --batch_size 16 \
-    --epochs 5 \
-    --lr 0.00005 \
-    --val_int 945 \
+    --intermediate mrp \
+    --val_int 250 \
     --patience 3 \
     --mask_ratio 0.5 \
-    --n_tk_label 2
+    --n_tk_label 2 \
+    --epochs 5 \
+    --batch_size 16 \
+    --lr 0.00002 \
+    --seed 42 \
+    --wandb_project your-wandb-project-name \
+    --finetuning_stage pre \
+    --dataset sold \
+    --skip_empty_rat True
+
 ```
 
 ### 2. Final Finetuning Stage
