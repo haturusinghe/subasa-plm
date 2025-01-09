@@ -36,12 +36,14 @@ def evaluate(args, model, dataloader, tokenizer, emb_layer, mlb):
         emb_layer.eval()
     with torch.no_grad():
         for i, batch in enumerate(tqdm(dataloader, desc="EVAL | # {}".format(args.n_eval), mininterval=0.01)):
-            in_tensor = tokenizer(batch[0], return_tensors='pt', padding=True)
+            input_texts_batch, class_labels_of_texts_batch, rationales_batch = batch[0], batch[1], batch[2]
+
+            in_tensor = tokenizer(input_texts_batch, return_tensors='pt', padding=True)
             in_tensor = in_tensor.to(args.device)
             max_len = in_tensor['input_ids'].shape[1]
 
             if args.intermediate == 'rp':
-                gts = prepare_gts(args, max_len, batch[2])
+                gts = prepare_gts(args, max_len, rationales_batch)
                 gts_tensor = torch.tensor(gts).to(args.device)
 
                 start_time = time.time()
@@ -49,7 +51,7 @@ def evaluate(args, model, dataloader, tokenizer, emb_layer, mlb):
                 consumed_time += time.time() - start_time   
 
             elif args.intermediate == 'mrp':
-                gts = prepare_gts(args, max_len, batch[2])
+                gts = prepare_gts(args, max_len, rationales_batch)
                 masked_idxs, label_reps, masked_gts = make_masked_rationale_label(args, gts, emb_layer)
                 gts_pad, masked_gts_pad, label_reps = add_pads(args, max_len, gts, masked_gts, label_reps)
 
