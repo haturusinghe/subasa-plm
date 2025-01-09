@@ -290,7 +290,7 @@ def train_mrp(args):
 
                 wandb.log(metrics)
 
-                save_checkpoint(args, val_losses, emb_layer, model, metrics)
+                save_checkpoint(args, val_losses, emb_layer, model, metrics=metrics)
 
             if args.waiting > args.patience:
                 print("early stopping")
