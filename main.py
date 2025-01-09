@@ -71,7 +71,7 @@ def parse_args():
 
     # TESTING 
     parser.add_argument('--test', default=False, help='test the model', type=bool)
-    parser.add_argument('--model_path', type=str, required=False, help='the checkpoint path to test', default=None)
+    parser.add_argument('--test_model_path', type=str, required=False, help='the checkpoint path to test', default=None)
 
     # PRETRAINED MODEL
     model_choices = ['xlm-roberta-large', 'xlm-roberta-base' ]
@@ -313,13 +313,13 @@ def test_trained_model(args, model, tokenizer, emb_layer, mlb):
 
     losses, loss_avg, time_avg, acc, f1, report, report_for_masked = evaluate(args, model, test_dataloader, tokenizer, emb_layer, mlb)
 
-    print("\nCheckpoint: ", args.model_path)
+    print("\nCheckpoint: ", args.test_model_path)
     print("Loss_avg: {} / min: {} / max: {} | Consumed_time: {}".format(loss_avg, min(losses), max(losses), time_avg))
     print("Acc: {} | F1: {} \n".format(acc[0], f1[0]))
     print("Classification Report:\n", report)
 
     log = open(os.path.join(args.dir_result, 'test_res.txt'), 'a')
-    log.write("Checkpoint: {} \n".format(args.model_path))
+    log.write("Checkpoint: {} \n".format(args.test_model_path))
     log.write("Loss_avg: {} / min: {} / max: {} | Consumed_time: {} \n".format(loss_avg, min(losses), max(losses), time_avg))
     log.write("Acc: {} | F1: {} \n".format(acc[0], f1[0]))
 
@@ -333,7 +333,7 @@ def test_trained_model(args, model, tokenizer, emb_layer, mlb):
         "test/time": time_avg,
     }
     # log the path of the checkpoint
-    metrics.update({"test/checkpoint": args.model_path})
+    metrics.update({"test/checkpoint": args.test_model_path})
 
     wandb.log(metrics)
 
@@ -381,12 +381,12 @@ def test_mrp(args):
     
     losses, loss_avg, time_avg, acc, f1, report, report_for_masked = evaluate(args, model, test_dataloader, tokenizer, emb_layer, mlb)
 
-    print("\nCheckpoint: ", args.model_path)
+    print("\nCheckpoint: ", args.test_model_path)
     print("Loss_avg: {} / min: {} / max: {} | Consumed_time: {}".format(loss_avg, min(losses), max(losses), time_avg))
     print("Acc: {} | F1: {} \n".format(acc[0], f1[0]))
     print("Classification Report:\n", report)
 
-    log.write("Checkpoint: {} \n".format(args.model_path))
+    log.write("Checkpoint: {} \n".format(args.test_model_path))
     log.write("Loss_avg: {} / min: {} / max: {} | Consumed_time: {} \n".format(loss_avg, min(losses), max(losses), time_avg))
     log.write("Acc: {} | F1: {} \n".format(acc[0], f1[0]))
 
@@ -400,7 +400,7 @@ def test_mrp(args):
         "test/time": time_avg,
     }
     # log the path of the checkpoint
-    metrics.update({"test/checkpoint": args.model_path})
+    metrics.update({"test/checkpoint": args.test_model_path})
 
     
     wandb.log(metrics)
@@ -627,7 +627,7 @@ def test_for_hate_speech(args):
     # print classification report like a nice table in terminal
     print("Classification Report:\n", class_report)
 
-    log.write("Checkpoint: {}\n".format(args.model_path))
+    log.write("Checkpoint: {}\n".format(args.test_model_path))
     log.write("Loss_avg: {} / min: {} / max: {} | Consumed_time: {}\n\n".format(loss_avg, min(losses), max(losses), time_avg))
     log.write("** Performance-based Scores **\n")
     log.write("Acc: {} | F1: {} | AUROC: {} \n".format(acc[0], f1_macro, auroc))
@@ -691,7 +691,7 @@ if __name__ == '__main__':
         print("Checkpoint path: ", dir_result)
         args.dir_result = dir_result
     elif args.test == True:
-        args.exp_name = args.model_path.split('/')[-1]
+        args.exp_name = args.test_model_path.split('/')[-1]
         # remove from the end of the string ".ckpt"
         args.exp_name = args.exp_name[:-5]
         dir_result = os.path.join(args.finetuning_stage + "_finetune", args.exp_name)
@@ -707,12 +707,12 @@ if __name__ == '__main__':
     if args.finetuning_stage == 'pre' and args.test == False:
         train_mrp(args)
     elif args.finetuning_stage == 'pre' and args.test == True:
-        if args.model_path:
+        if args.test_model_path:
             test_mrp(args)
     elif args.finetuning_stage == 'final' and args.test == False:
         train_offensive_detection(args)
     elif args.finetuning_stage == 'final' and args.test == True:
-        if args.model_path:
+        if args.test_model_path:
             args.explain_sold = False # Turn it to True if you want to get explainable metrics | WIP
             test_for_hate_speech(args)
 
