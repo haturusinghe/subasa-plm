@@ -104,6 +104,7 @@ def parse_args():
     parser.add_argument('--num_labels', type=int, default=2) # number of classes in the dataset
 
     ## Explainability based metrics
+    parser.add_argument('--explain_sold', default=False, help='Generate Explainablity Metrics', type=bool)
     parser.add_argument('--top_k', default=5, help='the top num of attention values to evaluate on explainable metrics')
     parser.add_argument('--lime_n_sample', default=100, help='the num of samples for lime explainer')
 
