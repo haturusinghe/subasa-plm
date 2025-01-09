@@ -84,8 +84,8 @@ class GetLossAverage(object):
 
 
 def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None, metrics=None):
-
-    file_name = f"{args.pretrained_model}_{args.intermediate}_val_loss_{metrics['val/loss']:.6f}_ep{metrics['epoch']}_stp{metrics['step']}_f1_{metrics['val/f1']:.6f}.ckpt"
+    intermediate_label = args.intermediate if args.intermediate != False else ''
+    file_name = f"{args.pretrained_model}_{args.finetuning_stage}_{intermediate_label}_val_loss_{metrics['val/loss']:.6f}_ep{metrics['epoch']}_stp{metrics['step']}_f1_{metrics['val/f1']:.6f}.ckpt"
     save_path = os.path.join(args.dir_result, file_name)
     trained_model.save_pretrained(save_directory=save_path)
     if tokenizer:
@@ -95,6 +95,7 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
     metrics_file = os.path.join(args.dir_result, file_name ,'metrics.txt')
     with open(metrics_file, 'w') as f:
         # Write main metrics
+        f.write(f"Pre-Finetuned Model Checkpoint Path: {args.pre_finetuned_model}\n")
         f.write(f"Validation Loss: {metrics['val/loss']:.6f}\n")
         f.write(f"Validation Accuracy: {metrics['val/accuracy']:.6f}\n")
         f.write(f"Validation F1: {metrics['val/f1']:.6f}\n")
