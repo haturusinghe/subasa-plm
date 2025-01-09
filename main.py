@@ -282,10 +282,15 @@ def train_mrp(args):
                         "val/masked_f1": f1[1],
                         "val/masked_classification_report": report_for_masked,
                     })
-                
+                    
+                metrics.update({
+                    "epoch": epoch,
+                    'step': i,
+                })
+
                 wandb.log(metrics)
 
-                save_checkpoint(args, val_losses, emb_layer, model)
+                save_checkpoint(args, val_losses, emb_layer, model, metrics)
 
             if args.waiting > args.patience:
                 print("early stopping")
