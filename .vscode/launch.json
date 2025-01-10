@@ -66,6 +66,27 @@
                 "--num_labels", "2",
                 "--pre_finetuned_model", "pre_finetune/09012025-1343_LK_2e-05_16_250_seed42_xlm-roberta-base_mrp_pre/xlm-roberta-base_mrp_val_loss_0.115060_ep4_stp249_f1_0.625580.ckpt"
             ]
+        },
+        {
+            "name": "Subasa: Testing Final Model After Finetuneing for OffensiveDetection (Final)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "--pretrained_model", "xlm-roberta-base",
+                "--val_int", "2500",
+                "--patience", "3",
+                "--epochs", "1",
+                "--batch_size", "1",
+                "--seed", "42",
+                "--wandb_project", "subasa-xlmr-base-session1",
+                "--finetuning_stage", "final",
+                "--dataset", "sold",
+                "--num_labels", "2",
+                "--test", "True",
+                "--test_model_path", "final_finetune/09012025-1650_LK_2e-05_16_250_seed42_final/xlm-roberta-base_final__val_loss_0.438462_ep4_stp249_f1_0.841653.ckpt"
+            ]
         }
         
     ]
