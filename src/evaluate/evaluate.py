@@ -123,6 +123,7 @@ def evaluate_for_hatespeech(args, model, dataloader, tokenizer):
     losses = []
     consumed_time = 0
     total_pred_clses, total_gt_clses, total_probs = [], [], []
+    all_inputs_and_their_predictions = []
 
     explain_dict_list = []
     label_dict = {0:'NOT', 1:'OFF'}
@@ -161,6 +162,11 @@ def evaluate_for_hatespeech(args, model, dataloader, tokenizer):
                 if explain_dict == None:
                     continue
                 explain_dict_list.append(explain_dict)
+
+            if args.test : 
+                # save the input and its prediction for later analysis
+                for input_text, pred_cls, gt_cls, prob in zip(input_texts_batch, pred_clses, labels_list, probs):
+                    all_inputs_and_their_predictions.append({'input_text': input_text, 'pred_cls': pred_cls, 'gt_cls': gt_cls, 'prob': prob})
     
     time_avg = consumed_time / len(dataloader)
     loss_avg = [sum(losses) / len(dataloader)]
@@ -178,8 +184,7 @@ def evaluate_for_hatespeech(args, model, dataloader, tokenizer):
                         labels=['NOT','OFF'])
 
     per_based_scores = [f1, auroc, wandb_roc_curve ,roc_curve_values]
-    print()
-    return losses, loss_avg, acc, per_based_scores, time_avg, explain_dict_list, class_report
+    return losses, loss_avg, acc, per_based_scores, time_avg, explain_dict_list, class_report, all_inputs_and_their_predictions
 
 
 
