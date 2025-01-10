@@ -379,7 +379,7 @@ def test_mrp(args):
         model = XLMRobertaCustomForTCwMRP.from_pretrained(args.test_model_path) 
         emb_layer = nn.Embedding(args.n_tk_label, 768)
         # Load the state dictionary
-        loaded_state_dict = torch.load(emb_path)
+        loaded_state_dict = torch.load(args.test_model_path + '_emb_layer_state.chkpt')
 
         # Apply to an embedding layer
         emb_layer.load_state_dict(loaded_state_dict)
