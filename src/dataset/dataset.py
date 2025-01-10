@@ -84,18 +84,26 @@ class SOLDDataset(Dataset):
         if self.intermediate:
             raw_rationale_from_ds = self.dataset[idx]['rationales'] #this is as a string (of a list) in the dataset
             rationales = literal_eval(raw_rationale_from_ds) # converts the raw string to a list of integers
-            
 
-            # convert ratianles back to a string and make sure its same as the original raw_rationale_from_ds
-            back_to_str = "[" + ", ".join([str(r) for r in rationales]) + "]"
-            assert raw_rationale_from_ds == back_to_str, "Rationales are not the same after conversion"
-
+            length_of_rationales = len(rationales)
+            length_of_text = len(text.split())
             
-            if len(rationales) != len(text.split()):
-                rationales = [0] * len(text.split())
-            
+            # # convert ratianles back to a string and make sure its same as the original raw_rationale_from_ds
+            # back_to_str = "[" + ", ".join([str(r) for r in rationales]) + "]"
+            # assert raw_rationale_from_ds == back_to_str, "Rationales are not the same after conversion"
 
-            final_rationale_tokens = get_token_rationale(self.tokenizer, copy.deepcopy(text.split(' ')), copy.deepcopy(rationales), copy.deepcopy(id))
+            # there are items in the dataset with label is NOt and the rationale list is an empty arry. so we need to make sure that the length of the rationales is the same as the length of the text
+            if label == "NOT" and len(rationales) == 0:
+                # create a list of zeros with the same length as the text
+                rationales = [0] * length_of_text
+
+            length_of_rationales = len(rationales)
+            if length_of_rationales != length_of_text:
+                self.logger.error(f"[ERROR] [RAT_LEN] {length_of_rationales} [TEXT_LEN] {length_of_text} [ID] {id}")
+                sys.exit(1)
+
+            text_str_split_to_tokens = text.split(' ')
+            final_rationale_tokens, text_after_tokenizer = get_token_rationale(self.tokenizer, copy.deepcopy(text_str_split_to_tokens), copy.deepcopy(rationales), copy.deepcopy(id))
 
             tmp = []
             for r in final_rationale_tokens:
