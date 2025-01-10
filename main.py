@@ -367,7 +367,6 @@ def test_mrp(args):
         name=args.exp_name
     )
     set_seed(args.seed)
-    # model_path, emb_path , model_path_best = get_checkpoint_path(args)
 
     tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
     tokenizer = add_tokens_to_tokenizer(args, tokenizer)
@@ -378,12 +377,8 @@ def test_mrp(args):
     elif args.intermediate == 'mrp':
         model = XLMRobertaCustomForTCwMRP.from_pretrained(args.test_model_path) 
         emb_layer = nn.Embedding(args.n_tk_label, 768)
-        # Load the state dictionary
-        loaded_state_dict = torch.load(args.test_model_path + '_emb_layer_state.chkpt')
-
-        # Apply to an embedding layer
+        loaded_state_dict = torch.load(args.test_model_path + '_emb_layer_states.ckpt')
         emb_layer.load_state_dict(loaded_state_dict)
-
         model.config.output_attentions=True
 
     model.resize_token_embeddings(len(tokenizer))
@@ -397,8 +392,9 @@ def test_mrp(args):
         emb_layer.to(args.device)
 
     model.to(args.device)
-
-    log = open(os.path.join(args.dir_result, 'test_res.txt'), 'a')
+    # make directory for test results
+    os.makedirs(os.path.join(args.test_model_path, 'test'), exist_ok=True)
+    log = open(os.path.join(args.test_model_path, 'test' ,'test_res.txt'), 'a')
 
     # calculate total number of steps per epoch
     steps_per_epoch = ceil(len(test_dataset) / args.batch_size)
