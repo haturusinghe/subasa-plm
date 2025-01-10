@@ -345,17 +345,38 @@ def test_trained_model(args, model, tokenizer, emb_layer, mlb):
 
 def test_mrp(args):
 
+    wandb.init(
+        project=args.wandb_project,
+        config={
+            "batch_size": args.batch_size,
+            "intermediate_task": args.intermediate,
+            "model": args.pretrained_model,
+            "test_model_path": args.test_model_path,
+            "seed": args.seed,
+            "dataset": args.dataset,
+            "finetuning_stage": args.finetuning_stage,
+            "val_int": args.val_int,
+            "patience": args.patience,
+            "mask_ratio": args.mask_ratio,
+            "n_tk_label": args.n_tk_label,
+            "test": args.test,
+            "exp_name": args.exp_name,
+            "test": args.test,
+            "skip_empty_rat": args.skip_empty_rat,
+        },
+        name=args.exp_name
+    )
     set_seed(args.seed)
-    model_path, emb_path , model_path_best = get_checkpoint_path(args)
+    # model_path, emb_path , model_path_best = get_checkpoint_path(args)
 
     tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
     tokenizer = add_tokens_to_tokenizer(args, tokenizer)
 
     if args.intermediate == 'rp':
-        model = XLMRobertaForTokenClassification.from_pretrained(model_path_best)
+        model = XLMRobertaForTokenClassification.from_pretrained(args.test_model_path)
         emb_layer = None
     elif args.intermediate == 'mrp':
-        model = XLMRobertaCustomForTCwMRP.from_pretrained(model_path_best) 
+        model = XLMRobertaCustomForTCwMRP.from_pretrained(args.test_model_path) 
         emb_layer = nn.Embedding(args.n_tk_label, 768)
         # Load the state dictionary
         loaded_state_dict = torch.load(emb_path)
