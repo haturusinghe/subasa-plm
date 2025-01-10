@@ -718,12 +718,14 @@ if __name__ == '__main__':
     # Execute appropriate training/testing function based on configuration
     if args.finetuning_stage == 'pre':
         if args.test and args.test_model_path:
+            args.batch_size = 1
             test_mrp(args)
         elif not args.test:
             train_mrp(args)
     elif args.finetuning_stage == 'final':
         if args.test and args.test_model_path:
             args.explain_sold = False  # Turn it to True for explainable metrics | WIP
+            args.batch_size = 1
             test_for_hate_speech(args)
         elif not args.test:
             train_offensive_detection(args)
