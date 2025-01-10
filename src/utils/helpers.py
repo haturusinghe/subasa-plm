@@ -49,7 +49,8 @@ def get_token_rationale(tokenizer, text, rationale, id):
     # If "good" gets tokenized to ["go", "##od"]
     # Output would be: [1, 1, 0]         # Rationale mapped to each token
     """
-    text_token = tokenizer.tokenize(' '.join(text))
+    original_text = ' '.join(text)
+    text_token = tokenizer.tokenize(original_text)
     assert len(text) == len(rationale), '[!] len(text) != len(rationale) | {} != {}\n{}\n{}'.format(len(text), len(rationale), text, rationale)
     
     rat_token = []
@@ -58,7 +59,7 @@ def get_token_rationale(tokenizer, text, rationale, id):
         rat_token += [r]*len(token)
 
     assert len(text_token) == len(rat_token), "#token != #target rationales of {}".format(id)
-    return rat_token
+    return rat_token , text_token
 
 class GetLossAverage(object):
     """Compute average for torch.Tensor, used for loss average."""
