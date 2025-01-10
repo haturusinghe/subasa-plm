@@ -193,3 +193,32 @@ class NumpyEncoder(json.JSONEncoder):
         elif isinstance(obj,(np.ndarray,)): #### This is the fix
             return obj.tolist()
         return json.JSONEncoder.default(self, obj)
+
+def setup_experiment_name(args):
+    lm = '-'.join(args.pretrained_model.split('-')[:])
+    name = f"{args.exp_date}_{args.lr}_{args.batch_size}_{args.val_int}_seed{args.seed}"
+    
+    if args.finetuning_stage == 'pre':
+        name += f"_{lm}_{args.intermediate}_pre"
+    elif args.finetuning_stage == 'final':
+        args.intermediate = False
+        args.num_labels = int(args.num_labels)
+        name += "_final"
+        print("Pre-finetuned model path: ", args.pre_finetuned_model)
+    
+    return name
+
+def setup_directories(args):
+    if args.test:
+        # Extract experiment name from test model path
+        exp_name = args.test_model_path.split('/')[-2]
+        base_dir = os.path.join(args.finetuning_stage + "_finetune", exp_name)
+        result_dir = os.path.join(base_dir, 'test')
+    else:
+        exp_name = setup_experiment_name(args)
+        result_dir = os.path.join(args.finetuning_stage + "_finetune", exp_name)
+    
+    os.makedirs(result_dir, exist_ok=True)
+    return exp_name, result_dir
+
+
