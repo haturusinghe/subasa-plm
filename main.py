@@ -631,7 +631,7 @@ def test_for_hate_speech(args):
     log = open(os.path.join(args.dir_result, 'test_res_performance.txt'), 'a')
 
 
-    losses, loss_avg, acc, per_based_scores, time_avg, explain_dict_list , class_report = evaluate_for_hatespeech(args, model, test_dataloader, tokenizer)
+    losses, loss_avg, acc, per_based_scores, time_avg, explain_dict_list , class_report, all_inputs_and_their_predictions = evaluate_for_hatespeech(args, model, test_dataloader, tokenizer)
 
     f1_macro, auroc, wandb_roc_curve, roc_curve_values = per_based_scores
 
@@ -664,6 +664,20 @@ def test_for_hate_speech(args):
     })
 
     wandb.log({"roc" : wandb_roc_curve})
+
+    #save all_inputs_and_their_predictions as a json file local directory
+    with open(args.dir_result + '/all_inputs_and_their_predictions.json', 'w') as f:
+        all_inputs_and_their_predictions_json = json.dumps(all_inputs_and_their_predictions, cls=NumpyEncoder)
+        f.write(all_inputs_and_their_predictions_json)
+
+
+    # save all_inputs_and_their_predictions as a table in wandb
+    # create Table object by iterating over the all_inputs_and_their_predictions
+    wandb_table_columns = list(all_inputs_and_their_predictions[0].keys())
+    wandb_table_data = [list(i.values()) for i in all_inputs_and_their_predictions]
+    wandb_table = wandb.Table(data=wandb_table_data, columns=wandb_table_columns)
+    wandb.log({"Table_all_inputs_and_their_predictions": wandb_table})
+    
 
 
     if args.explain_sold:
