@@ -42,6 +42,8 @@ from src.utils.helpers import (
     get_device,
     load_checkpoint,
     save_checkpoint,
+    setup_experiment_name,
+    setup_directories
 )
 from src.utils.logging_utils import setup_logging
 from src.utils.prefinetune_utils import add_pads, make_masked_rationale_label, prepare_gts
@@ -606,13 +608,12 @@ def test_for_hate_speech(args):
             "finetuning_stage": args.finetuning_stage,
             "val_int": args.val_int,
             "patience": args.patience,
-            "skip_empty_rat": args.skip_empty_rat,
-            "check_errors": args.check_errors,
             "top_k": args.top_k,
             "lime_n_sample": args.lime_n_sample,
             "label_classes": args.num_labels,
             "test": args.test,
-            "exp_name": args.exp_name
+            "exp_name": args.exp_name,
+            "explain_sold": args.explain_sold,
         },
         name=args.exp_name
     )
@@ -698,53 +699,33 @@ def test_for_hate_speech(args):
 if __name__ == '__main__':
     args = parse_args()
     args.device = get_device()
-
-    lm = '-'.join(args.pretrained_model.split('-')[:])
-
-    now = datetime.now()
-    args.exp_date = (now.strftime('%d%m%Y-%H%M') + '_LK')
-
-    if args.test == False:
-        args.exp_name = f"{args.exp_date}_{args.lr}_{args.batch_size}_{args.val_int}_seed{args.seed}"
-        if args.finetuning_stage == 'pre':
-            args.exp_name += f"_{lm}_{args.intermediate}"
-            args.exp_name += "_pre"
-        elif args.finetuning_stage == 'final':
-            args.intermediate = False
-            print("Pre-finetuned model path: ", args.pre_finetuned_model)
-            args.exp_name += f"_final"
-            args.num_labels = int(args.num_labels)
-
-
-        dir_result = os.path.join(args.finetuning_stage + "_finetune", args.exp_name)
-        os.makedirs(dir_result, exist_ok=True)
-
-        print("Checkpoint path: ", dir_result)
-        args.dir_result = dir_result
-    elif args.test == True:
-        args.exp_name = args.test_model_path.split('/')[-1]
-        # remove from the end of the string ".ckpt"
-        args.exp_name = args.exp_name[:-5]
-        dir_result = os.path.join(args.finetuning_stage + "_finetune", args.exp_name)
-        args.dir_result = os.path.join( dir_result, 'test')
-        os.makedirs(args.dir_result, exist_ok=True)
-
     args.waiting = 0
     args.n_eval = 0
 
+    # Clean up memory
     gc.collect()
     torch.cuda.empty_cache()
 
-    if args.finetuning_stage == 'pre' and args.test == False:
-        train_mrp(args)
-    elif args.finetuning_stage == 'pre' and args.test == True:
-        if args.test_model_path:
+    # Setup experiment name and paths
+    lm = '-'.join(args.pretrained_model.split('-')[:])
+    now = datetime.now()
+    args.exp_date = (now.strftime('%d%m%Y-%H%M') + '_LK')
+
+    # Setup experiment name and directories
+    args.exp_name, args.dir_result = setup_directories(args)
+    print("Checkpoint path: ", args.dir_result)
+
+    # Execute appropriate training/testing function based on configuration
+    if args.finetuning_stage == 'pre':
+        if args.test and args.test_model_path:
             test_mrp(args)
-    elif args.finetuning_stage == 'final' and args.test == False:
-        train_offensive_detection(args)
-    elif args.finetuning_stage == 'final' and args.test == True:
-        if args.test_model_path:
-            args.explain_sold = False # Turn it to True if you want to get explainable metrics | WIP
+        elif not args.test:
+            train_mrp(args)
+    elif args.finetuning_stage == 'final':
+        if args.test and args.test_model_path:
+            args.explain_sold = False  # Turn it to True for explainable metrics | WIP
             test_for_hate_speech(args)
+        elif not args.test:
+            train_offensive_detection(args)
 
 
