@@ -452,7 +452,6 @@ def train_offensive_detection(args):
             "finetuning_stage": args.finetuning_stage,
             "val_int": args.val_int,
             "patience": args.patience,
-            "skip_empty_rat": args.skip_empty_rat,
             "label_classes": args.num_labels,
             "skip_empty_rat": args.skip_empty_rat,
             "pre_finetuned_model": args.pre_finetuned_model,
