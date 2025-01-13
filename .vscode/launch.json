@@ -109,7 +109,7 @@
                 "--skip_empty_rat", "True",
                 "--test", "True",
                 "--intermediate", "mrp",
-                "--test_model_path", "pre_finetune/09012025-1343_LK_2e-05_16_250_seed42_xlm-roberta-base_mrp_pre/xlm-roberta-base_mrp_val_loss_0.115060_ep4_stp249_f1_0.625580.ckpt"
+                "--test_model_path", "pre_finetune/09012025-1343_LK_2e-05_16_250_seed42_xlm-roberta-base_mrp_pre/xlm-roberta-base_mrp_val_loss_0.144085_ep4_stp0_f1_0.550156.ckpt"
             ]
         }
         
