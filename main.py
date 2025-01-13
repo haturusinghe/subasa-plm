@@ -93,8 +93,6 @@ def parse_args():
     parser.add_argument('--mask_ratio', type=float, default=0.5)
     parser.add_argument('--n_tk_label', type=int, default=2)
     
-
-    parser.add_argument('--check_errors', default=False, help='check errors in the dataset', type=bool)
     parser.add_argument('--skip_empty_rat', default=False, help='skip empty rationales', type=bool, required=False)
 
     # Weights & Biases config
@@ -135,7 +133,6 @@ def train_mrp(args):
             "val_int": args.val_int,
             "patience": args.patience,
             "skip_empty_rat": args.skip_empty_rat,
-            "check_errors": args.check_errors,
         },
         name=args.exp_name
     )
@@ -240,7 +237,7 @@ def train_mrp(args):
 
             # validation model during training
             # TODO : Make sure there is a final validation right after the end of the final epoch
-            if i == 0 or (i+1) % args.val_int == 0:
+            if i == 0 or (i+1) % args.val_int == 0 or (epoch == args.epochs-1 and (i == steps_per_epoch or i == steps_per_epoch-1)):
                 _, val_loss, val_time, acc, f1, report, report_for_masked  = evaluate(args, model, val_dataloader, tokenizer, emb_layer, mlb) # report and report_for_masked are classification reports from sklearn
 
                 args.n_eval += 1
@@ -306,44 +303,8 @@ def train_mrp(args):
             break
     
     log.close()
-    test_trained_model(args, model, tokenizer, emb_layer, mlb)
     wandb.finish()
 
-
-def test_trained_model(args, model, tokenizer, emb_layer, mlb):
-    print("Testing the model after training!!")
-    logger = setup_logging()
-    logger.info("[START] Testing the model after training!!")
-    test_dataset = SOLDDataset(args, 'test')
-    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
-
-    losses, loss_avg, time_avg, acc, f1, report, report_for_masked = evaluate(args, model, test_dataloader, tokenizer, emb_layer, mlb)
-
-    print("\nCheckpoint: ", args.test_model_path)
-    print("Loss_avg: {} / min: {} / max: {} | Consumed_time: {}".format(loss_avg, min(losses), max(losses), time_avg))
-    print("Acc: {} | F1: {} \n".format(acc[0], f1[0]))
-    print("Classification Report:\n", report)
-
-    log = open(os.path.join(args.dir_result, 'test_res.txt'), 'a')
-    log.write("Checkpoint: {} \n".format(args.test_model_path))
-    log.write("Loss_avg: {} / min: {} / max: {} | Consumed_time: {} \n".format(loss_avg, min(losses), max(losses), time_avg))
-    log.write("Acc: {} | F1: {} \n".format(acc[0], f1[0]))
-
-    # Log validation metrics
-    metrics = {
-        "test/Loss_avg": loss_avg,
-        "test/Loss_min": min(losses),
-        "test/Loss_max": max(losses),
-        "test/accuracy": acc[0],
-        "test/f1": f1[0],
-        "test/time": time_avg,
-    }
-    # log the path of the checkpoint
-    metrics.update({"test/checkpoint": args.test_model_path})
-
-    wandb.log(metrics)
-
-    log.close()
 
 def test_mrp(args):
 
@@ -363,7 +324,6 @@ def test_mrp(args):
             "n_tk_label": args.n_tk_label,
             "test": args.test,
             "exp_name": args.exp_name,
-            "test": args.test,
             "skip_empty_rat": args.skip_empty_rat,
         },
         name=args.exp_name
