@@ -26,7 +26,7 @@ def prepare_gts(args, max_len, bi_rats_str):
 
 
 ###### MRP ######
-def make_masked_rationale_label(args, labels, emb_layer):
+def make_masked_rationale_label(args, gt_labels, emb_layer):
     """
     args : starting args from main.py
     labels : batch of rationale strings converted to list with padding added to match the max_len of the input_ids tensor (output of the prepare_gts function)
@@ -36,9 +36,9 @@ def make_masked_rationale_label(args, labels, emb_layer):
     label_reps_list = []
     masked_idxs_list = []
     masked_labels_list = []
-    for label in labels:
+    for label in gt_labels:
         idxs = list(range(len(label)))
-        if args.test:
+        if args.intermediate == 'rp': #TODO: check if this is correct, if not remove this block (during testing we probably need to follow same procedure as training)
             masked_idxs = idxs[1:-1]
             masked_label = [-100]+label[1:-1]+[-100]
             label_rep = torch.zeros(len(label), emb_layer.embedding_dim)
