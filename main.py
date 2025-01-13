@@ -146,6 +146,8 @@ def train_mrp(args):
     tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
     tokenizer = add_tokens_to_tokenizer(args, tokenizer)
 
+    model = None
+
     if args.intermediate == 'rp':
         model = XLMRobertaForTokenClassification.from_pretrained(args.pretrained_model)
         emb_layer = None
@@ -405,11 +407,23 @@ def test_mrp(args):
     print("\nCheckpoint: ", args.test_model_path)
     print("Loss_avg: {} / min: {} / max: {} | Consumed_time: {}".format(loss_avg, min(losses), max(losses), time_avg))
     print("Acc: {} | F1: {} \n".format(acc[0], f1[0]))
+
+    if args.intermediate == 'mrp':
+        print("* acc about masked: {} | f1 about masked: {}".format(acc[1], f1[1]))
+
     print("Classification Report:\n", report)
+    if args.intermediate == 'mrp':
+        print("Classification Report for Masked:\n", report_for_masked)
+        print('\n')
 
     log.write("Checkpoint: {} \n".format(args.test_model_path))
     log.write("Loss_avg: {} / min: {} / max: {} | Consumed_time: {} \n".format(loss_avg, min(losses), max(losses), time_avg))
     log.write("Acc: {} | F1: {} \n".format(acc[0], f1[0]))
+    log.write("Classification Report:\n{}\n".format(report))
+    if args.intermediate == 'mrp':
+        log.write("Classification Report for Masked:\n{}\n".format(report_for_masked))
+        log.write('\n')
+    
 
     # Log validation metrics
     metrics = {
@@ -419,7 +433,16 @@ def test_mrp(args):
         "test/accuracy": acc[0],
         "test/f1": f1[0],
         "test/time": time_avg,
+        "test/classification_report": report,
     }
+
+    if args.intermediate == 'mrp':
+        metrics.update({
+            "test/masked_accuracy": acc[1],
+            "test/masked_f1": f1[1],
+            "test/masked_classification_report": report_for_masked,
+        })
+
     # log the path of the checkpoint
     metrics.update({"test/checkpoint": args.test_model_path})
 
