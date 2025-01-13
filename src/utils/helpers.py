@@ -86,7 +86,8 @@ class GetLossAverage(object):
 
 def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None, metrics=None):
     intermediate_label = args.intermediate if args.intermediate != False else ''
-    file_name = f"{args.pretrained_model}_{args.finetuning_stage}_{intermediate_label}_val_loss_{metrics['val/loss']:.6f}_ep{metrics['epoch']}_stp{metrics['step']}_f1_{metrics['val/f1']:.6f}.ckpt"
+    per_masked_f1_label = f"_masked_f1_{metrics['val/masked_f1']:.6f}" if 'val/masked_f1' in metrics else ''
+    file_name = f"{args.pretrained_model}_{args.finetuning_stage}_{intermediate_label}_val_loss_{metrics['val/loss']:.6f}_ep{metrics['epoch']}_stp{metrics['step']}_f1_{metrics['val/f1']:.6f}_{per_masked_f1_label}.ckpt"
     save_path = os.path.join(args.dir_result, file_name)
     trained_model.save_pretrained(save_directory=save_path)
     if tokenizer:
@@ -125,6 +126,15 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
     if losses[-1] <= min(losses):
         print(f"[!] Loss has been decreased from {losses[-2] if len(losses) > 1 else losses[-1]:.6f} to {losses[-1]:.6f}")
         args.waiting = 0
+
+def cleanup_useless_checkpoints(args):
+    # Remove checkpoints that are not the best
+    checkpoints = os.listdir(args.dir_result)
+    best_checkpoint = max([float(x.split('_')[-1].split('.ckpt')[0]) for x in checkpoints if '.ckpt' in x])
+    for checkpoint in checkpoints:
+        if '.ckpt' in checkpoint:
+            if float(checkpoint.split('_')[-1].split('.ckpt')[0]) != best_checkpoint:
+                os.remove(os.path.join(args.dir_result, checkpoint))
 
 def load_checkpoint(args, load_best=True, path=None):
     """Load saved checkpoint including model, embedding layer 
