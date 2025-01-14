@@ -100,7 +100,7 @@ def parse_args():
 
     # Weights & Biases config
     parser.add_argument('--wandb_project', type=str, default='subasa-llm', help='Weights & Biases project name')
-    parser.add_argument('--save_to_hf', default=False, help='save the model to huggingface', type=bool)
+    parser.add_argument('--push_to_hub', default=False, help='save the model to huggingface', type=bool)
     
     #### FOR STEP 2 ####
     parser.add_argument('--pre_finetuned_model', required=False, default=None) # path to the pre-finetuned model
