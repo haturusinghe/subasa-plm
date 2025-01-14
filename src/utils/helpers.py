@@ -16,6 +16,7 @@ from src.models.custom_models import XLMRobertaCustomForTCwMRP
 from src.utils.logging_utils import setup_logging
 
 from huggingface_hub import HfApi
+from huggingface_hub import ModelCard, ModelCardData
 
 def get_device():
     if torch.cuda.is_available():
@@ -87,6 +88,7 @@ class GetLossAverage(object):
 
 
 def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None, metrics=None):
+
     intermediate_label = args.intermediate if args.intermediate != False else ''
     per_masked_f1_label = f"_masked_f1_{metrics['val/masked_f1']:.6f}" if 'val/masked_f1' in metrics else ''
     file_name = f"{args.pretrained_model}_{args.finetuning_stage}_{intermediate_label}_val_loss_{metrics['val/loss']:.6f}_ep{metrics['epoch']}_stp{metrics['step']}_f1_{metrics['val/f1']:.6f}_{per_masked_f1_label}.ckpt"
@@ -135,52 +137,121 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
         try:
             now = datetime.now()
             time_now = (now.strftime('%d%m%Y-%H%M'))
-            commit_message = f"""Epoch {metrics['epoch']}, Step {metrics['step']}, Val Loss {metrics['val/loss']:.4f}
-            intermediate task: {intermediate_label} F1 {metrics['val/f1']:.4f} {args.wandb_run_url}"""
             repo_name = f"{args.pretrained_model}-{args.finetuning_stage}-{intermediate_label}-{time_now}"
+            
+            # Create evaluation results for model card
+            eval_results = {
+                "metrics": [
+                    {
+                        "type": "accuracy",
+                        "value": metrics['val/accuracy'],
+                        "name": "Validation Accuracy"
+                    },
+                    {
+                        "type": "f1",
+                        "value": metrics['val/f1'],
+                        "name": "Validation F1"
+                    },
+                    {
+                        "type": "loss",
+                        "value": metrics['val/loss'],
+                        "name": "Validation Loss"
+                    }
+                ]
+            }
+
+            # Add masked metrics if present
+            if 'val/masked_accuracy' in metrics:
+                eval_results["metrics"].extend([
+                    {
+                        "type": "masked_accuracy",
+                        "value": metrics['val/masked_accuracy'],
+                        "name": "Masked Accuracy"
+                    },
+                    {
+                        "type": "masked_f1",
+                        "value": metrics['val/masked_f1'],
+                        "name": "Masked F1"
+                    }
+                ])
+
+            # Create model card
+            card_data = ModelCardData(
+                language="en",
+                license="mit",
+                model_name=repo_name,
+                eval_results=eval_results
+            )
+
+            card = ModelCard.from_template(
+                card_data,
+                model_description=f"""
+# Model Details
+- Base Model: {args.pretrained_model}
+- Finetuning Stage: {args.finetuning_stage}
+- Intermediate Task: {intermediate_label}
+- Pre-Finetuned Model: {args.pre_finetuned_model}
+- Wandb Run URL: {args.wandb_run_url}
+
+## Training Information
+- Epochs: {metrics['epoch']}
+- Steps: {metrics['step']}
+- Validation Time: {metrics['val/time']:.2f}s
+
+## Performance Metrics
+### Main Metrics
+- Validation Loss: {metrics['val/loss']:.6f}
+- Validation Accuracy: {metrics['val/accuracy']:.6f}
+- Validation F1: {metrics['val/f1']:.6f}
+
+### Classification Report
+```
+{metrics['val/classification_report']}
+```
+""")
+
+            # Add masked metrics section if present
+            if 'val/masked_accuracy' in metrics:
+                card.text += f"""
+### Masked Metrics
+- Masked Accuracy: {metrics['val/masked_accuracy']:.6f}
+- Masked F1: {metrics['val/masked_f1']:.6f}
+
+#### Masked Classification Report
+```
+{metrics['val/masked_classification_report']}
+```
+"""
+
+            commit_message = f"Epoch {metrics['epoch']}, Step {metrics['step']}, Val Loss {metrics['val/loss']:.4f}"
+            
+            # Push model to hub
             trained_model.push_to_hub(
                 repo_name,
-                commit_message= commit_message
-            )[2]
-            
-            # Upload metrics file to hub
-            with open(metrics_file, 'r') as f:
-                metrics_content = f.read()
-            
-            # Create model card with metrics
-            model_card = f"""
-            # Model Details
-            - Base Model: {args.pretrained_model}
-            - Finetuning Stage: {args.finetuning_stage}
-            - Intermediate Task: {intermediate_label}
-            - Wandb Run URL: {args.wandb_run_url}
-            
-            ## Training Metrics
-            ```
-            {metrics_content}
-            ```
-            """
+                commit_message=commit_message
+            )
             
             # Push model card to hub
-            with open(os.path.join(save_path, "README.md"), 'w') as f:
-                f.write(model_card)
+            card.push_to_hub(f"s-haturusinghe/{repo_name}")
             
             huggingface_repo_url = f"https://huggingface.co/s-haturusinghe/{repo_name}"
-            # if args.intermediate == 'mrp' then push the embedding layer to heggungface repo
+            
+            # Push embedding layer if MRP
             if args.intermediate == 'mrp':
                 api = HfApi()
                 api.upload_file(
-                path_or_fileobj= emb_save_path,
-                path_in_repo= f"{emb_file_name}",
-                repo_id= f"s-haturusinghe/{repo_name}",
-                repo_type= "model",
-            )
+                    path_or_fileobj=emb_save_path,
+                    path_in_repo=f"{emb_file_name}",
+                    repo_id=f"s-haturusinghe/{repo_name}",
+                    repo_type="model",
+                )
                 
         except Exception as e:
             print(f"Error pushing to Hugging Face Hub: {str(e)}")
             print("Continuing without pushing to hub...")
     
     return save_path, huggingface_repo_url
+
 
 
 def cleanup_useless_checkpoints(args):
