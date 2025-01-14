@@ -218,11 +218,12 @@ def train_mrp(args):
         for i, batch in enumerate(tqdm(train_dataloader, desc="TRAINING MODEL for {} | Epoch: {}".format(args.intermediate,epoch), mininterval=0.01)):
             # each row in batch before processing is ordered as follows: (text, cls_num, final_rationales_str) : text is the tweet , cls_num is the label (0 for NOT and 1 for OFF), final_rationales_str is the rationale corresponding to the tokenized text
 
-            input_texts_batch, class_labels_of_texts_batch, rationales_batch = batch[0], batch[1], batch[2]
+            if args.intermediate != 'mlm':
+                input_texts_batch, class_labels_of_texts_batch, rationales_batch = batch[0], batch[1], batch[2]
 
-            in_tensor = tokenizer(input_texts_batch, return_tensors='pt', padding=True)
-            max_len = in_tensor['input_ids'].shape[1] 
-            in_tensor = in_tensor.to(args.device)
+                in_tensor = tokenizer(input_texts_batch, return_tensors='pt', padding=True)
+                max_len = in_tensor['input_ids'].shape[1] 
+                in_tensor = in_tensor.to(args.device)
 
             optimizer.zero_grad()
 
@@ -241,6 +242,8 @@ def train_mrp(args):
                 in_tensor['label_reps'] = label_reps
                 out_tensor = model(**in_tensor, labels=gts_tensor)
             elif args.intermediate == 'mlm':
+                batch = {k: v.to(args.device) for k, v in batch.items()}
+                out_tensor = model(**batch)
 
 
             loss = out_tensor.loss
@@ -270,7 +273,6 @@ def train_mrp(args):
                 print("Classification Report:\n", report)
                 if args.intermediate == 'mrp':
                     print("Classification Report for Masked:\n", report_for_masked)
-                print('\n')
 
                 log.write("[Epoch {} | Val #{}]\n".format(epoch, args.n_eval))
                 log.write("* tr_loss: {}\n".format(tr_loss))
@@ -281,7 +283,7 @@ def train_mrp(args):
                 log.write("Classification Report:\n{}\n".format(report))
                 if args.intermediate == 'mrp':
                     log.write("Classification Report for Masked:\n{}\n".format(report_for_masked))
-                log.write('\n')
+
 
                 # Log validation metrics
                 metrics = {
