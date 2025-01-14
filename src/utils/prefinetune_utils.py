@@ -4,6 +4,7 @@ import random
 
 def prepare_gts(args, max_len, bi_rats_str):
     """
+    returns ground truth rationale strings with padding added to match the max_len the text (after tokenization) in the batch
     args : starting args from main.py
     max_len : max_len of the input_ids tensor
     bi_rats_str : batch of rationale strings
