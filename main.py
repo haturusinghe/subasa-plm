@@ -268,9 +268,12 @@ def train_mrp(args):
                 print("* tr_loss: {}".format(tr_loss))
                 print("* val_loss: {} | val_consumed_time: {}".format(val_loss, val_time))
                 print("* acc: {} | f1: {}".format(acc[0], f1[0]))
+                if args.intermediate != 'mlm':
+                    print("Classification Report:\n", report)
+
                 if args.intermediate == 'mrp':
                     print("* acc about masked: {} | f1 about masked: {}".format(acc[1], f1[1]))
-                print("Classification Report:\n", report)
+                
                 if args.intermediate == 'mrp':
                     print("Classification Report for Masked:\n", report_for_masked)
 

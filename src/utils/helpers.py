@@ -135,7 +135,7 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
         try:
             commit_message = f"""Epoch {metrics['epoch']}, Step {metrics['step']}, Val Loss {metrics['val/loss']:.4f}
             intermediate task: {intermediate_label} F1 {metrics['val/f1']:.4f} {args.wandb_run_url}"""
-            repo_name = f"{args.model_name}-{args.finetuning_stage}-{intermediate_label}-{args.exp_date}"
+            repo_name = f"{args.pretrained_model}-{args.finetuning_stage}-{intermediate_label}-{args.exp_date}"
             trained_model.push_to_hub(
                 repo_name,
                 commit_message= commit_message
@@ -148,7 +148,7 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
             # Create model card with metrics
             model_card = f"""
             # Model Details
-            - Model: {args.pretrained_model}
+            - Base Model: {args.pretrained_model}
             - Finetuning Stage: {args.finetuning_stage}
             - Intermediate Task: {intermediate_label}
             - Wandb Run URL: {args.wandb_run_url}
