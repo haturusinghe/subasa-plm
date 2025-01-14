@@ -50,6 +50,8 @@ from src.utils.helpers import (
 )
 from src.utils.logging_utils import setup_logging
 from src.utils.prefinetune_utils import add_pads, make_masked_rationale_label, prepare_gts
+import subprocess
+import os
 
 def set_seed(seed):
     torch.manual_seed(seed)
@@ -58,6 +60,32 @@ def set_seed(seed):
     torch.backends.cudnn.benchmark = False
     np.random.seed(seed)
     random.seed(seed)
+
+def login_to_wandb():
+    api_key = os.getenv('WANDB_API_KEY')
+    if not api_key:
+        raise ValueError("WANDB_API_KEY not set in environment variables")
+    try:
+        result = subprocess.run(['wandb', 'login', api_key], 
+                              capture_output=True, 
+                              text=True, 
+                              check=True)
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        raise RuntimeError(f"Failed to login to wandb: {str(e)}")
+
+def login_to_huggingface():
+    api_key = os.getenv('HF_TOKEN')
+    if not api_key:
+        raise ValueError("HF_TOKEN not set in environment variables")
+    try:
+        result = subprocess.run(['huggingface-cli', 'login', api_key], 
+                              capture_output=True, 
+                              text=True, 
+                              check=True)
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        raise RuntimeError(f"Failed to login to Hugging Face: {str(e)}")
 
 
 def parse_args():
@@ -727,6 +755,9 @@ if __name__ == '__main__':
     # Setup experiment name and directories
     args.exp_name, args.dir_result = setup_directories(args)
     print("Checkpoint path: ", args.dir_result)
+
+    login_to_wandb() 
+    login_to_huggingface()
 
     # Execute appropriate training/testing function based on configuration
     if args.finetuning_stage == 'pre':
