@@ -84,7 +84,7 @@ def add_pads(args, max_len, labels, masked_labels, label_reps):
             n_pads = max_len - len(label_for_each_token) # get the length of the maximmum length tokonized sequence
             label_for_each_token = label_for_each_token + [0]*n_pads # add padds to make each sequence the same length
             label_with_masks = label_with_masks + [-100]*n_pads # add padds to make each sequence the same length , -100 is the default ignore_index in PyTorch’s CrossEntropyLoss. So, any token with a label of -100 will be ignored in loss computation
-            zero_ten = torch.zeros(n_pads, 768).to(args.device)
+            zero_ten = torch.zeros(n_pads, args.hidden_size).to(args.device)
             token_embeddings_with_masks = torch.cat((token_embeddings_with_masks, zero_ten), 0)
             
             assert len(label_for_each_token) == len(label_with_masks) == token_embeddings_with_masks.shape[0], '[!] add_pads | different lens of each ele'
