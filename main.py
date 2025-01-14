@@ -191,6 +191,8 @@ def train_mrp(args):
         emb_layer = nn.Embedding(args.n_tk_label, hidden_size)
         model.config.output_attentions=True
     
+    hidden_size = model.config.hidden_size
+    args.hidden_size = hidden_size
     model.resize_token_embeddings(len(tokenizer))
 
     data_collator = None
@@ -400,12 +402,15 @@ def test_mrp(args):
         model = XLMRobertaForTokenClassification.from_pretrained(args.test_model_path)
         emb_layer = None
     elif args.intermediate == 'mrp':
-        model = XLMRobertaCustomForTCwMRP.from_pretrained(args.test_model_path) 
-        emb_layer = nn.Embedding(args.n_tk_label, 768)
+        model = XLMRobertaCustomForTCwMRP.from_pretrained(args.test_model_path)
+        hidden_size = model.config.hidden_size 
+        emb_layer = nn.Embedding(args.n_tk_label, hidden_size)
         loaded_state_dict = torch.load(args.test_model_path + '_emb_layer_states.ckpt')
         emb_layer.load_state_dict(loaded_state_dict)
         model.config.output_attentions=True
 
+    hidden_size = model.config.hidden_size
+    args.hidden_size = hidden_size
     model.resize_token_embeddings(len(tokenizer))
     
     test_dataset = SOLDDataset(args, 'test')
