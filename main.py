@@ -508,6 +508,8 @@ def train_offensive_detection(args):
         name=args.exp_name + '_TRAIN'
     )
 
+    args.wandb_run_url = wandb.run.get_url()
+
     # Set seed
     set_seed(args.seed)
 
@@ -553,6 +555,9 @@ def train_offensive_detection(args):
 
             # Validation 
             # TODO : Make sure there is a final validation right after the end of the final epoch
+            if i == steps_per_epoch:
+                print(f"************************ ********* Epoch {epoch} | Step {i} | Validation")
+
             if i==0 or (i+1) % args.val_int == 0 or (epoch == args.epochs-1 and (i == steps_per_epoch or i == steps_per_epoch-1)):
                 _, loss_avg, acc_avg, per_based_scores, time_avg, _ , class_report, all_inputs_and_their_predictions = evaluate_for_hatespeech(args, model, val_dataloader, tokenizer)
 
@@ -602,7 +607,13 @@ def train_offensive_detection(args):
                 wandb.log(metrics)
                 # wandb.log({"val/roc" : wandb_roc_curve})
 
-                save_checkpoint(args, val_losses, None, model, metrics=metrics)
+                save_path, huggingface_repo_url = save_checkpoint(args, val_losses, None, model, metrics=metrics)
+
+                #update wandb config with the huggingface repo url and save path of checkpoint
+                wandb.config.update({
+                    "checkpoint": save_path,
+                    "huggingface_repo_url": huggingface_repo_url,
+                }, allow_val_change=True)
 
             if args.waiting > args.patience:
                 print("[!] Early stopping")
@@ -625,6 +636,7 @@ def load_model_train(args):
 
     model_state = model.state_dict()
     finetuned_state = pre_finetuned_model.state_dict()
+
     
     # Initialize condition layer randomly 
     filtered_pretrained_state = {}
@@ -636,6 +648,8 @@ def load_model_train(args):
 
     model_state.update(filtered_pretrained_state)
     model.load_state_dict(model_state, strict=True)
+
+    args.hidden_size = model.config.hidden_size
 
     return model, tokenizer
 
