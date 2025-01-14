@@ -16,13 +16,14 @@ from src.utils.helpers import add_tokens_to_tokenizer, get_token_rationale
 from src.utils.logging_utils import setup_logging
 
 class SOLDDataset(Dataset):
-    def __init__(self, args, mode='train'):
+    def __init__(self, args, mode='train', tokenizer=None):
         self.train_dataset_path = 'SOLD_DATASET/sold_train_split.json' 
         self.test_dataset_path = 'SOLD_DATASET/sold_test_split.json'
 
         self.label_list = ['NOT' , 'OFF']
         self.label_count = [0, 0]
         self.logger = setup_logging()
+        self.tokenizer = tokenizer
 
         if mode == 'test':
             with open(self.test_dataset_path, 'r') as f:
@@ -81,7 +82,7 @@ class SOLDDataset(Dataset):
         label = self.dataset[idx]['label']
         cls_num = self.label_list.index(label)
         
-        if self.intermediate:
+        if self.intermediate == 'mrp' or self.intermediate == 'rp':
             raw_rationale_from_ds = self.dataset[idx]['rationales'] #this is as a string (of a list) in the dataset
             rationales = literal_eval(raw_rationale_from_ds) # converts the raw string to a list of integers
 
@@ -110,6 +111,10 @@ class SOLDDataset(Dataset):
                 tmp.append(str(r))
             final_rationales_str = ','.join(tmp)
             return (text, cls_num, final_rationales_str)
+
+        elif self.intermediate == 'mlm':
+            encoding = self.tokenizer(text, return_tensors=None, padding=True)
+            return encoding
 
         elif self.intermediate == False:  # hate speech detection
             return (text, cls_num, id)
