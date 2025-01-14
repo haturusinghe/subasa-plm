@@ -27,6 +27,9 @@ from transformers import (
     XLMRobertaForSequenceClassification,
     XLMRobertaForTokenClassification,
     XLMRobertaTokenizer,
+    DataCollatorForLanguageModeling,
+    TrainingArguments,
+    Trainer,
 )
 
 # Local imports
@@ -87,7 +90,7 @@ def parse_args():
     parser.add_argument('--patience', type=int, default=3)
 
     ## Pre-Finetuing Task
-    parser.add_argument('--intermediate', choices=['mrp', 'rp'], default=False, required=False, help='choice of an intermediate task')
+    parser.add_argument('--intermediate', choices=['mrp', 'rp', 'mlm'], default=False, required=False, help='choice of an intermediate task')
 
     ## Masked Ratioale Prediction 
     parser.add_argument('--mask_ratio', type=float, default=0.5)
@@ -148,6 +151,9 @@ def train_mrp(args):
     if args.intermediate == 'rp':
         model = XLMRobertaForTokenClassification.from_pretrained(args.pretrained_model)
         emb_layer = None
+    elif args.intermediate == 'mlm':
+        model = XLMRobertaForMaskedLM.from_pretrained(args.pretrained_model)
+        emb_layer = None
     elif args.intermediate == 'mrp':
         model = XLMRobertaCustomForTCwMRP.from_pretrained(args.pretrained_model) 
         emb_layer = nn.Embedding(args.n_tk_label, 768)
@@ -155,12 +161,20 @@ def train_mrp(args):
     
     model.resize_token_embeddings(len(tokenizer))
 
+    data_collator = None
+    if args.intermediate == 'mlm':
+        data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=True, mlm_probability=args.mask_ratio)
+
     # Define dataloader
     train_dataset = SOLDDataset(args, 'train') 
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     
     val_dataset = SOLDDataset(args, 'val')
     val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
+
+    if args.intermediate == 'mlm':
+        train_dataloader.collate_fn = data_collator
+        val_dataloader.collate_fn = data_collator
 
     get_tr_loss = GetLossAverage()
     mlb = MultiLabelBinarizer()
@@ -171,6 +185,8 @@ def train_mrp(args):
         emb_layer.train()
     else:
         optimizer = optim.RAdam(model.parameters(), lr=args.lr, betas=(0.9, 0.99))
+
+    
     
     # Log to wandb details about the optimizer
     wandb.config.update({
@@ -222,6 +238,8 @@ def train_mrp(args):
                 gts_tensor = torch.tensor(masked_gts_pad).to(args.device)
                 in_tensor['label_reps'] = label_reps
                 out_tensor = model(**in_tensor, labels=gts_tensor)
+            elif args.intermediate == 'mlm':
+
 
             loss = out_tensor.loss
             loss.backward()
