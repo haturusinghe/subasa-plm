@@ -89,7 +89,7 @@ class GetLossAverage(object):
 
 def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None, metrics=None):
 
-    intermediate_label = args.intermediate if args.intermediate != False else ''
+    intermediate_label = args.intermediate + "-" if args.intermediate != False else ''
     per_masked_f1_label = f"_masked_f1_{metrics['val/masked_f1']:.6f}" if 'val/masked_f1' in metrics else ''
     file_name = f"{args.pretrained_model}_{args.finetuning_stage}_{intermediate_label}_val_loss_{metrics['val/loss']:.6f}_ep{metrics['epoch']}_stp{metrics['step']}_f1_{metrics['val/f1']:.6f}_{per_masked_f1_label}.ckpt"
     save_path = os.path.join(args.dir_result, file_name)
@@ -137,7 +137,7 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
         try:
             now = datetime.now()
             time_now = (now.strftime('%d%m%Y-%H%M'))
-            repo_name = f"{args.pretrained_model}-{args.finetuning_stage}-{intermediate_label}-{time_now}-{args.seed}"
+            repo_name = f"{args.pretrained_model}-{args.finetuning_stage}-{intermediate_label}{time_now}-{args.seed}"
 
             markdown_file_save_path = os.path.join(args.dir_result, file_name, 'README.md')
             with open(markdown_file_save_path, 'w') as f:
