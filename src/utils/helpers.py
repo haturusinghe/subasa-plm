@@ -137,91 +137,49 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
         try:
             now = datetime.now()
             time_now = (now.strftime('%d%m%Y-%H%M'))
-            repo_name = f"{args.pretrained_model}-{args.finetuning_stage}-{intermediate_label}-{time_now}"
+            repo_name = f"{args.pretrained_model}-{args.finetuning_stage}-{intermediate_label}-{time_now}-{args.seed}"
+
+            markdown_file_save_path = os.path.join(args.dir_result, file_name, 'README.md')
+            with open(markdown_file_save_path, 'w') as f:
+                f.write(f"# {repo_name}\n\n")
+                f.write(f"## {args.pretrained_model} Finetuning\n\n")
+                f.write(f"### Model Description\n\n")
+                f.write(f"Base Model: {args.pretrained_model}\n\n")
+                f.write(f"Intermediate Task: {intermediate_label}\n\n")
+                f.write(f"Pre-Finetuned Model: {args.pre_finetuned_model}\n\n")
+                f.write(f"Wandb Run URL: {args.wandb_run_url}\n\n")
+                f.write(f"## Training Information\n\n")
+                f.write(f"Epochs: {metrics['epoch']}\n\n")
+                f.write(f"Steps: {metrics['step']}\n\n")
+                f.write(f"Validation Time: {metrics['val/time']:.2f}s\n\n")
+                f.write(f"## Performance Metrics\n\n")
+                f.write(f"### Main Metrics\n\n")
+                f.write(f"Validation Loss: {metrics['val/loss']:.6f}\n\n")
+                f.write(f"Validation Accuracy: {metrics['val/accuracy']:.6f}\n\n")
+                f.write(f"Validation F1: {metrics['val/f1']:.6f}\n\n")
+                f.write(f"### Classification Report\n\n")
+                f.write(f"{metrics['val/classification_report']}\n\n")
+                
+                if 'val/masked_accuracy' in metrics:
+                    f.write(f"### Masked Metrics\n\n")
+                    f.write(f"Masked Accuracy: {metrics['val/masked_accuracy']:.6f}\n\n")
+                    f.write(f"Masked F1: {metrics['val/masked_f1']:.6f}\n\n")
+                    f.write(f"#### Masked Classification Report\n\n")
+                    f.write(f"{metrics['val/masked_classification_report']}\n\n")
             
-            # Create evaluation results for model card
-            eval_results = {
-                "metrics": [
-                    {
-                        "type": "accuracy",
-                        "value": metrics['val/accuracy'],
-                        "name": "Validation Accuracy"
-                    },
-                    {
-                        "type": "f1",
-                        "value": metrics['val/f1'],
-                        "name": "Validation F1"
-                    },
-                    {
-                        "type": "loss",
-                        "value": metrics['val/loss'],
-                        "name": "Validation Loss"
-                    }
-                ]
-            }
-
-            # Add masked metrics if present
-            if 'val/masked_accuracy' in metrics:
-                eval_results["metrics"].extend([
-                    {
-                        "type": "masked_accuracy",
-                        "value": metrics['val/masked_accuracy'],
-                        "name": "Masked Accuracy"
-                    },
-                    {
-                        "type": "masked_f1",
-                        "value": metrics['val/masked_f1'],
-                        "name": "Masked F1"
-                    }
-                ])
-
+           
             # Create model card
             card_data = ModelCardData(
                 language="en",
                 license="mit",
                 model_name=repo_name,
-                eval_results=eval_results
+                base_model=args.pretrained_model,
             )
 
             card = ModelCard.from_template(
-                card_data,
-                model_description=f"""
-# Model Details
-- Base Model: {args.pretrained_model}
-- Finetuning Stage: {args.finetuning_stage}
-- Intermediate Task: {intermediate_label}
-- Pre-Finetuned Model: {args.pre_finetuned_model}
-- Wandb Run URL: {args.wandb_run_url}
-
-## Training Information
-- Epochs: {metrics['epoch']}
-- Steps: {metrics['step']}
-- Validation Time: {metrics['val/time']:.2f}s
-
-## Performance Metrics
-### Main Metrics
-- Validation Loss: {metrics['val/loss']:.6f}
-- Validation Accuracy: {metrics['val/accuracy']:.6f}
-- Validation F1: {metrics['val/f1']:.6f}
-
-### Classification Report
-```
-{metrics['val/classification_report']}
-```
-""")
-
-            # Add masked metrics section if present
-            if 'val/masked_accuracy' in metrics:
-                card.text += f"""
-### Masked Metrics
-- Masked Accuracy: {metrics['val/masked_accuracy']:.6f}
-- Masked F1: {metrics['val/masked_f1']:.6f}
-
-#### Masked Classification Report
-```
-{metrics['val/masked_classification_report']}
-```
-"""
+                card_data = card_data,
+                template_path = markdown_file_save_path
+            )
 
             commit_message = f"Epoch {metrics['epoch']}, Step {metrics['step']}, Val Loss {metrics['val/loss']:.4f}"
             
