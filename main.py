@@ -185,8 +185,10 @@ def train_mrp(args):
         model = XLMRobertaForMaskedLM.from_pretrained(args.pretrained_model)
         emb_layer = None
     elif args.intermediate == 'mrp':
-        model = XLMRobertaCustomForTCwMRP.from_pretrained(args.pretrained_model) 
-        emb_layer = nn.Embedding(args.n_tk_label, 768)
+        model = XLMRobertaCustomForTCwMRP.from_pretrained(args.pretrained_model)
+        # Get hidden size dynamically from model config
+        hidden_size = model.config.hidden_size
+        emb_layer = nn.Embedding(args.n_tk_label, hidden_size)
         model.config.output_attentions=True
     
     model.resize_token_embeddings(len(tokenizer))
