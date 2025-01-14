@@ -462,6 +462,9 @@ def train_offensive_detection(args):
 
     log = open(os.path.join(args.dir_result, 'train_res.txt'), 'a')
 
+    steps_per_epoch = ceil(len(train_dataset) / args.batch_size)
+    print("Steps per epoch: ", steps_per_epoch)
+
     tr_losses, val_losses, val_f1s, val_accs = [], [], [], []
     for epoch in range(args.epochs):
         for i, batch in enumerate(tqdm(train_dataloader, desc="TRAINING (Phase 2 for OffensiveDetection) | Epoch: {}".format(epoch), mininterval=0.01)):  # data: (post_words, target_rat, post_id)
@@ -482,8 +485,8 @@ def train_offensive_detection(args):
 
             # Validation 
             # TODO : Make sure there is a final validation right after the end of the final epoch
-            if i==0 or (i+1) % args.val_int == 0:
-                _, loss_avg, acc_avg, per_based_scores, time_avg, _ , class_report = evaluate_for_hatespeech(args, model, val_dataloader, tokenizer)
+            if i==0 or (i+1) % args.val_int == 0 or (epoch == args.epochs-1 and (i == steps_per_epoch or i == steps_per_epoch-1)):
+                _, loss_avg, acc_avg, per_based_scores, time_avg, _ , class_report, all_inputs_and_their_predictions = evaluate_for_hatespeech(args, model, val_dataloader, tokenizer)
 
                 f1_macro, auroc, wandb_roc_curve, roc_curve_values = per_based_scores
 
