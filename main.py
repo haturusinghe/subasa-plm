@@ -573,6 +573,7 @@ def test_for_hate_speech(args):
         project=args.wandb_project,
         config={
             "batch_size": args.batch_size,
+            "mask_ratio_of_pre_finetuned_model": args.mask_ratio,
             "model": args.pretrained_model,
             "test_model_path": args.test_model_path,
             "seed": args.seed,
