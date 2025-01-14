@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import sys
 
 import numpy as np
 from tqdm import tqdm
@@ -104,8 +105,13 @@ def evaluate(args, model, dataloader, tokenizer, emb_layer, mlb):
     time_avg = consumed_time / len(dataloader)
 
     if args.intermediate == 'rp':
-        all_gts = mlb.fit_transform(all_gts)
-        all_pred_clses = mlb.fit_transform(all_pred_clses)
+        gts_flat = [item for sublist in all_gts for item in sublist]
+        preds_flat = [item for sublist in all_pred_clses for item in sublist]
+        all_gts = gts_flat
+        all_pred_clses = preds_flat
+    #     all_gts = mlb.fit_transform(all_gts)
+    #     all_pred_clses = mlb.fit_transform(all_pred_clses)
+
     acc = [accuracy_score(all_gts, all_pred_clses)] #all_gts and all_pred_clses are lists all ground truth and predicted labels respectively concatanated across all batches into a single list
     f1 = [f1_score(all_gts, all_pred_clses, average='macro')]
     report = classification_report(all_gts, all_pred_clses, output_dict=True)
