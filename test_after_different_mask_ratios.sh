@@ -1,0 +1,12 @@
+python main.py --pretrained_model xlm-roberta-base --val_int 1000 --patience 3 --epochs 1 --batch_size 1 --lr 0.00002 --seed 42 --wandb_project subasa-xlmr-base-session1 --finetuning_stage final --dataset sold --num_labels 2 --mask_ratio 0.1 --test True --test_model_path final_finetune/14012025-1140_LK_2e-05_16_1000_seed42_final/xlm-roberta-base_final__val_loss_0.689499_ep4_stp421_f1_0.354005_.ckpt
+
+python main.py --pretrained_model xlm-roberta-base --val_int 1000 --patience 3 --epochs 1 --batch_size 1 --lr 0.00002 --seed 42 --wandb_project subasa-xlmr-base-session1 --finetuning_stage final --dataset sold --num_labels 2 --mask_ratio 0.25 --test True --test_model_path final_finetune/14012025-1155_LK_2e-05_16_1000_seed42_final/xlm-roberta-base_final__val_loss_0.451314_ep4_stp421_f1_0.830377_.ckpt
+
+python main.py --pretrained_model xlm-roberta-base --val_int 1000 --patience 3 --epochs 1 --batch_size 1 --lr 0.00002 --seed 42 --wandb_project subasa-xlmr-base-session1 --finetuning_stage final --dataset sold --num_labels 2 --mask_ratio 0.5 --test True --test_model_path final_finetune/14012025-1210_LK_2e-05_16_1000_seed42_final/xlm-roberta-base_final__val_loss_0.419217_ep4_stp421_f1_0.833129_.ckpt
+
+python main.py --pretrained_model xlm-roberta-base --val_int 1000 --patience 3 --epochs 1 --batch_size 1 --lr 0.00002 --seed 42 --wandb_project subasa-xlmr-base-session1 --finetuning_stage final --dataset sold --num_labels 2 --mask_ratio 0.75 --test True --test_model_path final_finetune/14012025-1225_LK_2e-05_16_1000_seed42_final/xlm-roberta-base_final__val_loss_0.469364_ep1_stp0_f1_0.802020_.ckpt
+
+python main.py --pretrained_model xlm-roberta-base --val_int 1000 --patience 3 --epochs 1 --batch_size 1 --lr 0.00002 --seed 42 --wandb_project subasa-xlmr-base-session1 --finetuning_stage final --dataset sold --num_labels 2 --mask_ratio 1.0 --test True --test_model_path final_finetune/14012025-1240_LK_2e-05_16_1000_seed42_final/xlm-roberta-base_final__val_loss_0.599909_ep4_stp421_f1_0.832970_.ckpt
+
+python main.py --pretrained_model xlm-roberta-base --val_int 1000 --patience 3 --epochs 1 --batch_size 1 --lr 0.00002 --seed 42 --wandb_project subasa-xlmr-base-session1 --finetuning_stage final --dataset sold --num_labels 2 --mask_ratio -1.0 --test True --test_model_path final_finetune/14012025-1256_LK_2e-05_16_1000_seed42_final/xlm-roberta-base_final__val_loss_0.415424_ep4_stp0_f1_0.796530_.ckpt
+
