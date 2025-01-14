@@ -324,7 +324,7 @@ def train_mrp(args):
                 wandb.config.update({
                     "checkpoint": save_path,
                     "huggingface_repo_url": huggingface_repo_url,
-                })
+                }, allow_val_change=True)
 
                 
 
