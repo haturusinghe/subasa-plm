@@ -221,48 +221,6 @@ def cleanup_useless_checkpoints(args):
             if float(checkpoint.split('_')[-1].split('.ckpt')[0]) != best_checkpoint:
                 os.remove(os.path.join(args.dir_result, checkpoint))
 
-def load_checkpoint(args, load_best=True, path=None):
-    """Load saved checkpoint including model, embedding layer 
-    
-    Args:
-        args: Arguments containing experiment info
-        load_best: Whether to load the best checkpoint
-        path (str): Path to the saved checkpoint
-    
-    Returns:
-        model: Loaded model
-        embedding_layer: Loaded embedding layer (if MRP)
-    """
-
-    logger = setup_logging()
-
-    if path is not None:
-        # pre_finetune/08012025-0942_LK_xlm-roberta-base_mrp_5e-05_16_600_seed42_pre/08012025-0942_LK_xlm-roberta-base_mrp_5e-05_16_600_seed42_pre.ckpt
-        model_path = path + '/' + path.split('/')[-1] + '.ckpt'
-        emb_path = path + '/' + path.split('/')[-1] + '_emb.ckpt'
-
-        if load_best:
-            model_path = path + '/' + 'BEST_' + path.split('/')[-1] + '.ckpt'
-
-
-    # Load the model
-    model = None
-    embedding_layer = None
-    logger.info("[MODEL_LOAD] Loading model from {}".format(model_path))
-    logger.info("[EMB_LOAD] Loading embedding layer from {}".format(emb_path))
-    if args.intermediate == 'rp':
-        model = XLMRobertaForTokenClassification.from_pretrained(model_path)
-    elif args.intermediate == 'mrp':
-        logger.info("Loading model from {}".format(model_path))
-        model = XLMRobertaCustomForTCwMRP.from_pretrained(model_path)
-        embedding_layer = nn.Embedding(args.n_tk_label, 768)
-        embedding_layer.load_state_dict(torch.load(emb_path))
-
-    if model is None:
-        raise ValueError("Failed to load model from " + model_path)
-        
-    return model, embedding_layer
-
 
 
 def get_checkpoint_path(args):
