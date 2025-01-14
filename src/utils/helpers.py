@@ -15,6 +15,8 @@ from transformers import XLMRobertaTokenizer, XLMRobertaModel, XLMRobertaConfig,
 from src.models.custom_models import XLMRobertaCustomForTCwMRP
 from src.utils.logging_utils import setup_logging
 
+from huggingface_hub import HfApi
+
 def get_device():
     if torch.cuda.is_available():
         print("device = cuda")
@@ -126,6 +128,58 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
     if losses[-1] <= min(losses):
         print(f"[!] Loss has been decreased from {losses[-2] if len(losses) > 1 else losses[-1]:.6f} to {losses[-1]:.6f}")
         args.waiting = 0
+    
+    # Push to Hugging Face Hub
+    huggingface_repo_url = None
+    if args.push_to_hub:
+        try:
+            commit_message = f"""Epoch {metrics['epoch']}, Step {metrics['step']}, Val Loss {metrics['val/loss']:.4f}
+            intermediate task: {intermediate_label} F1 {metrics['val/f1']:.4f} {args.wandb_run_url}"""
+            repo_name = f"{args.model_name}-{args.finetuning_stage}-{intermediate_label}-{args.exp_date}"
+            trained_model.push_to_hub(
+                repo_name,
+                commit_message= commit_message
+            )[2]
+            
+            # Upload metrics file to hub
+            with open(metrics_file, 'r') as f:
+                metrics_content = f.read()
+            
+            # Create model card with metrics
+            model_card = f"""
+            # Model Details
+            - Model: {args.pretrained_model}
+            - Finetuning Stage: {args.finetuning_stage}
+            - Intermediate Task: {intermediate_label}
+            - Wandb Run URL: {args.wandb_run_url}
+            
+            ## Training Metrics
+            ```
+            {metrics_content}
+            ```
+            """
+            
+            # Push model card to hub
+            with open(os.path.join(save_path, "README.md"), 'w') as f:
+                f.write(model_card)
+            
+            huggingface_repo_url = f"https://huggingface.co/s-haturusinghe/{repo_name}"
+            # if args.intermediate == 'mrp' then push the embedding layer to heggungface repo
+            if args.intermediate == 'mrp':
+                api = HfApi()
+                api.upload_file(
+                path_or_fileobj= emb_save_path,
+                path_in_repo= f"{emb_file_name}",
+                repo_id= f"s-haturusinghe/{repo_name}",
+                repo_type= "model",
+            )
+                
+        except Exception as e:
+            print(f"Error pushing to Hugging Face Hub: {str(e)}")
+            print("Continuing without pushing to hub...")
+    
+    return save_path, huggingface_repo_url
+
 
 def cleanup_useless_checkpoints(args):
     # Remove checkpoints that are not the best

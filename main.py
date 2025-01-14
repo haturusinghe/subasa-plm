@@ -27,6 +27,9 @@ from transformers import (
     XLMRobertaForSequenceClassification,
     XLMRobertaForTokenClassification,
     XLMRobertaTokenizer,
+    DataCollatorForLanguageModeling,
+    TrainingArguments,
+    Trainer,
 )
 
 # Local imports
@@ -87,7 +90,7 @@ def parse_args():
     parser.add_argument('--patience', type=int, default=3)
 
     ## Pre-Finetuing Task
-    parser.add_argument('--intermediate', choices=['mrp', 'rp'], default=False, required=False, help='choice of an intermediate task')
+    parser.add_argument('--intermediate', choices=['mrp', 'rp', 'mlm'], default=False, required=False, help='choice of an intermediate task')
 
     ## Masked Ratioale Prediction 
     parser.add_argument('--mask_ratio', type=float, default=0.5)
@@ -97,7 +100,7 @@ def parse_args():
 
     # Weights & Biases config
     parser.add_argument('--wandb_project', type=str, default='subasa-llm', help='Weights & Biases project name')
-    parser.add_argument('--save_to_hf', default=False, help='save the model to huggingface', type=bool)
+    parser.add_argument('--push_to_hub', default=False, help='save the model to huggingface', type=bool)
     
     #### FOR STEP 2 ####
     parser.add_argument('--pre_finetuned_model', required=False, default=None) # path to the pre-finetuned model
@@ -137,6 +140,8 @@ def train_mrp(args):
         name=args.exp_name
     )
 
+    args.wandb_run_url = wandb.run.get_url()
+
     # Set seed
     set_seed(args.seed)
 
@@ -148,6 +153,9 @@ def train_mrp(args):
     if args.intermediate == 'rp':
         model = XLMRobertaForTokenClassification.from_pretrained(args.pretrained_model)
         emb_layer = None
+    elif args.intermediate == 'mlm':
+        model = XLMRobertaForMaskedLM.from_pretrained(args.pretrained_model)
+        emb_layer = None
     elif args.intermediate == 'mrp':
         model = XLMRobertaCustomForTCwMRP.from_pretrained(args.pretrained_model) 
         emb_layer = nn.Embedding(args.n_tk_label, 768)
@@ -155,12 +163,20 @@ def train_mrp(args):
     
     model.resize_token_embeddings(len(tokenizer))
 
+    data_collator = None
+    if args.intermediate == 'mlm':
+        data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=True, mlm_probability=args.mask_ratio)
+
     # Define dataloader
-    train_dataset = SOLDDataset(args, 'train') 
+    train_dataset = SOLDDataset(args, 'train', tokenizer=tokenizer) 
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     
-    val_dataset = SOLDDataset(args, 'val')
+    val_dataset = SOLDDataset(args, 'val', tokenizer=tokenizer)
     val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
+
+    if args.intermediate == 'mlm':
+        train_dataloader.collate_fn = data_collator
+        val_dataloader.collate_fn = data_collator
 
     get_tr_loss = GetLossAverage()
     mlb = MultiLabelBinarizer()
@@ -171,6 +187,8 @@ def train_mrp(args):
         emb_layer.train()
     else:
         optimizer = optim.RAdam(model.parameters(), lr=args.lr, betas=(0.9, 0.99))
+
+    
     
     # Log to wandb details about the optimizer
     wandb.config.update({
@@ -200,11 +218,12 @@ def train_mrp(args):
         for i, batch in enumerate(tqdm(train_dataloader, desc="TRAINING MODEL for {} | Epoch: {}".format(args.intermediate,epoch), mininterval=0.01)):
             # each row in batch before processing is ordered as follows: (text, cls_num, final_rationales_str) : text is the tweet , cls_num is the label (0 for NOT and 1 for OFF), final_rationales_str is the rationale corresponding to the tokenized text
 
-            input_texts_batch, class_labels_of_texts_batch, rationales_batch = batch[0], batch[1], batch[2]
+            if args.intermediate != 'mlm':
+                input_texts_batch, class_labels_of_texts_batch, rationales_batch = batch[0], batch[1], batch[2]
 
-            in_tensor = tokenizer(input_texts_batch, return_tensors='pt', padding=True)
-            max_len = in_tensor['input_ids'].shape[1] 
-            in_tensor = in_tensor.to(args.device)
+                in_tensor = tokenizer(input_texts_batch, return_tensors='pt', padding=True)
+                max_len = in_tensor['input_ids'].shape[1] 
+                in_tensor = in_tensor.to(args.device)
 
             optimizer.zero_grad()
 
@@ -222,6 +241,10 @@ def train_mrp(args):
                 gts_tensor = torch.tensor(masked_gts_pad).to(args.device)
                 in_tensor['label_reps'] = label_reps
                 out_tensor = model(**in_tensor, labels=gts_tensor)
+            elif args.intermediate == 'mlm':
+                batch = {k: v.to(args.device) for k, v in batch.items()}
+                out_tensor = model(**batch)
+
 
             loss = out_tensor.loss
             loss.backward()
@@ -250,7 +273,6 @@ def train_mrp(args):
                 print("Classification Report:\n", report)
                 if args.intermediate == 'mrp':
                     print("Classification Report for Masked:\n", report_for_masked)
-                print('\n')
 
                 log.write("[Epoch {} | Val #{}]\n".format(epoch, args.n_eval))
                 log.write("* tr_loss: {}\n".format(tr_loss))
@@ -261,7 +283,7 @@ def train_mrp(args):
                 log.write("Classification Report:\n{}\n".format(report))
                 if args.intermediate == 'mrp':
                     log.write("Classification Report for Masked:\n{}\n".format(report_for_masked))
-                log.write('\n')
+
 
                 # Log validation metrics
                 metrics = {
@@ -284,9 +306,24 @@ def train_mrp(args):
                     'step': i,
                 })
 
+                if args.intermediate == 'mlm':
+                    # remove classificaion metrics from the metrics dict
+                    metrics.pop("val/classification_report")
+                    metrics.update({
+                        "val/classification_report": None,
+                    })
+
                 wandb.log(metrics)
 
-                save_checkpoint(args, val_losses, emb_layer, model, metrics=metrics)
+                save_path, huggingface_repo_url = save_checkpoint(args, val_losses, emb_layer, model, metrics=metrics)
+
+                #update wandb config with the huggingface repo url and save path of checkpoint
+                wandb.config.update({
+                    "checkpoint": save_path,
+                    "huggingface_repo_url": huggingface_repo_url,
+                })
+
+                
 
             if args.waiting > args.patience:
                 print("early stopping")

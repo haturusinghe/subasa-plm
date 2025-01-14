@@ -29,6 +29,7 @@ def get_pred_cls(logits):
 
 def evaluate(args, model, dataloader, tokenizer, emb_layer, mlb):
     all_pred_clses, all_pred_clses_masked, all_gts, all_gts_masked_only = [], [], [], []
+    masked_predictions, masked_labels = [], []
     losses = []
     consumed_time = 0
 
@@ -37,11 +38,12 @@ def evaluate(args, model, dataloader, tokenizer, emb_layer, mlb):
         emb_layer.eval()
     with torch.no_grad():
         for i, batch in enumerate(tqdm(dataloader, desc="EVAL | # {}".format(args.n_eval), mininterval=0.01)):
-            input_texts_batch, class_labels_of_texts_batch, rationales_batch = batch[0], batch[1], batch[2]
+            if args.intermediate != 'mlm':
+                input_texts_batch, class_labels_of_texts_batch, rationales_batch = batch[0], batch[1], batch[2]
 
-            in_tensor = tokenizer(input_texts_batch, return_tensors='pt', padding=True)
-            in_tensor = in_tensor.to(args.device)
-            max_len = in_tensor['input_ids'].shape[1]
+                in_tensor = tokenizer(input_texts_batch, return_tensors='pt', padding=True)
+                in_tensor = in_tensor.to(args.device)
+                max_len = in_tensor['input_ids'].shape[1]
 
             if args.intermediate == 'rp':
                 gts = prepare_gts(args, max_len, rationales_batch)
@@ -63,6 +65,12 @@ def evaluate(args, model, dataloader, tokenizer, emb_layer, mlb):
                 start_time = time.time()
                 out_tensor = model(**in_tensor, labels=gts_tensor) #-100 values in the gts_tensor are a flag to ignore them during loss calculation
                 consumed_time += time.time() - start_time
+            elif args.intermediate == 'mlm':
+                batch = {k: v.to(args.device) for k, v in batch.items()}
+                start_time = time.time()
+                out_tensor = model(**batch)
+                consumed_time += time.time() - start_time
+
 
             loss = out_tensor.loss.item()
             logits = out_tensor.logits
@@ -100,6 +108,27 @@ def evaluate(args, model, dataloader, tokenizer, emb_layer, mlb):
                 all_pred_clses += pred_clses_wo_pad
                 all_pred_clses_masked += pred_clses_masked
                 all_gts_masked_only += gts_masked_only
+            
+            elif args.intermediate == 'mlm':
+                # For MLM, we need to track the predictions and ground truth only for masked tokens
+
+                pred_probs = F.softmax(logits, dim=2)
+                predictions = torch.argmax(logits, dim=2)  # Shape: (batch_size, sequence_length)
+                
+                # Get the labels (ground truth) from the batch
+                labels = batch['labels']  # Shape: (batch_size, sequence_length)
+                
+                # Process each sequence in the batch
+                for pred, label in zip(predictions, labels):
+                    # Find positions where tokens were masked (label != -100)
+                    masked_positions = label != -100
+                    
+                    # Get predictions and labels only for masked positions
+                    sequence_preds = pred[masked_positions].cpu().tolist()
+                    sequence_labels = label[masked_positions].cpu().tolist()
+                    
+                    masked_predictions.extend(sequence_preds)
+                    masked_labels.extend(sequence_labels)
 
     loss_avg = sum(losses) / len(dataloader)
     time_avg = consumed_time / len(dataloader)
@@ -111,6 +140,10 @@ def evaluate(args, model, dataloader, tokenizer, emb_layer, mlb):
         all_pred_clses = preds_flat
     #     all_gts = mlb.fit_transform(all_gts)
     #     all_pred_clses = mlb.fit_transform(all_pred_clses)
+    elif args.intermediate == 'mlm':
+        all_gts = masked_labels
+        all_pred_clses = masked_predictions
+
 
     acc = [accuracy_score(all_gts, all_pred_clses)] #all_gts and all_pred_clses are lists all ground truth and predicted labels respectively concatanated across all batches into a single list
     f1 = [f1_score(all_gts, all_pred_clses, average='macro')]
