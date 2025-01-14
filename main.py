@@ -228,13 +228,6 @@ def train_mrp(args):
             optimizer.step()
             get_tr_loss.add(loss)
 
-            # # Log training metrics
-            # wandb.log({
-            #     "train/loss": loss.item(),
-            #     "train/learning_rate": optimizer.param_groups[0]['lr'],
-            #     "epoch": epoch,
-            # })
-
             # validation model during training
             # TODO : Make sure there is a final validation right after the end of the final epoch
             if i == 0 or (i+1) % args.val_int == 0 or (epoch == args.epochs-1 and (i == steps_per_epoch or i == steps_per_epoch-1)):
@@ -326,7 +319,7 @@ def test_mrp(args):
             "exp_name": args.exp_name,
             "skip_empty_rat": args.skip_empty_rat,
         },
-        name=args.exp_name
+        name= args.exp_name + '_TEST'
     )
     set_seed(args.seed)
 
@@ -436,8 +429,9 @@ def train_offensive_detection(args):
             "pre_finetuned_model": args.pre_finetuned_model,
             "test": args.test,
             "explain_sold": args.explain_sold,
+            "mask_ratio_of_pre_finetuned_model": args.mask_ratio,
         },
-        name=args.exp_name
+        name=args.exp_name + '_TRAIN'
     )
 
     # Set seed
@@ -541,30 +535,6 @@ def train_offensive_detection(args):
                 break
         if args.waiting > args.patience:
             break
-
-    # Final evaluation after training
-    # print("\nPerforming final evaluation...")
-    # _, loss_avg, acc_avg, per_based_scores, time_avg, _, class_report = evaluate_for_hatespeech(args, model, val_dataloader, tokenizer)
-    
-    # print("[Final Evaluation Results]")
-    # print("* val_loss: {} | val_consumed_time: {}".format(loss_avg[0], time_avg))
-    # print("* acc: {} | f1: {} | AUROC: {}\n".format(acc_avg[0], per_based_scores[0], per_based_scores[1]))
-    # print("Classification Report:\n", class_report)
-    
-    # # Log final metrics to wandb
-    # wandb.log({
-    #     "val/loss": loss_avg[0],
-    #     "val/accuracy": acc_avg[0],
-    #     "val/f1": per_based_scores[0],
-    #     "val/auroc": per_based_scores[1],
-    #     "val/time": time_avg,
-    #     "val/classification_report": class_report
-    # })
-
-    # log.write("\n[Final Evaluation Results]\n")
-    # log.write("* val_loss: {} | val_consumed_time: {}\n".format(loss_avg[0], time_avg))
-    # log.write("* acc: {} | f1: {} | AUROC: {}\n".format(acc_avg[0], per_based_scores[0], per_based_scores[1]))
-    # log.write("Classification Report:\n{}\n".format(class_report))
     log.close()
     wandb.finish()
 
@@ -617,7 +587,7 @@ def test_for_hate_speech(args):
             "exp_name": args.exp_name,
             "explain_sold": args.explain_sold,
         },
-        name=args.exp_name
+        name=args.exp_name + '_TEST'
     )
 
     tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
