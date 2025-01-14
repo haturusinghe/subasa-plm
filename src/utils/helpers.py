@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from sklearn.preprocessing import LabelEncoder
 import os  
-import datetime
+from datetime import datetime
 import torch
 from torch.utils.data import DataLoader
 import torch.nn as nn
