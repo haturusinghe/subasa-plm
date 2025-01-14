@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from sklearn.preprocessing import LabelEncoder
 import os  
-
+import datetime
 import torch
 from torch.utils.data import DataLoader
 import torch.nn as nn
@@ -133,9 +133,11 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
     huggingface_repo_url = None
     if args.push_to_hub:
         try:
+            now = datetime.now()
+            time_now = (now.strftime('%d%m%Y-%H%M'))
             commit_message = f"""Epoch {metrics['epoch']}, Step {metrics['step']}, Val Loss {metrics['val/loss']:.4f}
             intermediate task: {intermediate_label} F1 {metrics['val/f1']:.4f} {args.wandb_run_url}"""
-            repo_name = f"{args.pretrained_model}-{args.finetuning_stage}-{intermediate_label}-{args.exp_date}"
+            repo_name = f"{args.pretrained_model}-{args.finetuning_stage}-{intermediate_label}-{time_now}"
             trained_model.push_to_hub(
                 repo_name,
                 commit_message= commit_message
