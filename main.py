@@ -140,6 +140,8 @@ def train_mrp(args):
         name=args.exp_name
     )
 
+    args.wandb_run_url = wandb.run.get_url()
+
     # Set seed
     set_seed(args.seed)
 
