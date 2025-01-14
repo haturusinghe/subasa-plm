@@ -1,0 +1,5 @@
+#!/bin/bash
+python main.py --pretrained_model xlm-roberta-base --val_int 1000 --patience 3 --epochs 5 --batch_size 16 --lr 0.00002 --seed 42 --wandb_project subasa-xlmr-base-session1 --finetuning_stage pre --dataset sold --n_tk_label 2 --skip_empty_rat True --intermediate mrp --mask_ratio 0.10
+python main.py --pretrained_model xlm-roberta-base --val_int 1000 --patience 3 --epochs 5 --batch_size 16 --lr 0.00002 --seed 42 --wandb_project subasa-xlmr-base-session1 --finetuning_stage pre --dataset sold --n_tk_label 2 --skip_empty_rat True --intermediate mrp --mask_ratio 0.25
+python main.py --pretrained_model xlm-roberta-base --val_int 1000 --patience 3 --epochs 5 --batch_size 16 --lr 0.00002 --seed 42 --wandb_project subasa-xlmr-base-session1 --finetuning_stage pre --dataset sold --n_tk_label 2 --skip_empty_rat True --intermediate mrp --mask_ratio 0.75
+python main.py --pretrained_model xlm-roberta-base --val_int 1000 --patience 3 --epochs 5 --batch_size 16 --lr 0.00002 --seed 42 --wandb_project subasa-xlmr-base-session1 --finetuning_stage pre --dataset sold --n_tk_label 2 --skip_empty_rat True --intermediate rp --mask_ratio 1
