@@ -304,9 +304,24 @@ def train_mrp(args):
                     'step': i,
                 })
 
+                if args.intermediate == 'mlm':
+                    # remove classificaion metrics from the metrics dict
+                    metrics.pop("val/classification_report")
+                    metrics.update({
+                        "val/classification_report": None,
+                    })
+
                 wandb.log(metrics)
 
-                save_checkpoint(args, val_losses, emb_layer, model, metrics=metrics)
+                save_path, huggingface_repo_url = save_checkpoint(args, val_losses, emb_layer, model, metrics=metrics)
+
+                #update wandb config with the huggingface repo url and save path of checkpoint
+                wandb.config.update({
+                    "checkpoint": save_path,
+                    "huggingface_repo_url": huggingface_repo_url,
+                })
+
+                
 
             if args.waiting > args.patience:
                 print("early stopping")
