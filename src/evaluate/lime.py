@@ -28,7 +28,6 @@ from src.utils.helpers import (
     add_tokens_to_tokenizer,
     get_checkpoint_path,
     get_device,
-    load_checkpoint,
     save_checkpoint,
 )
 from src.utils.logging_utils import setup_logging
