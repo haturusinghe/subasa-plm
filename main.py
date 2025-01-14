@@ -168,10 +168,10 @@ def train_mrp(args):
         data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=True, mlm_probability=args.mask_ratio)
 
     # Define dataloader
-    train_dataset = SOLDDataset(args, 'train') 
+    train_dataset = SOLDDataset(args, 'train', tokenizer=tokenizer) 
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     
-    val_dataset = SOLDDataset(args, 'val')
+    val_dataset = SOLDDataset(args, 'val', tokenizer=tokenizer)
     val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
 
     if args.intermediate == 'mlm':
