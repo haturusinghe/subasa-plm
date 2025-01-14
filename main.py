@@ -756,8 +756,8 @@ if __name__ == '__main__':
     args.exp_name, args.dir_result = setup_directories(args)
     print("Checkpoint path: ", args.dir_result)
 
-    login_to_wandb() 
-    login_to_huggingface()
+    # login_to_wandb() 
+    # login_to_huggingface()
 
     # Execute appropriate training/testing function based on configuration
     if args.finetuning_stage == 'pre':
