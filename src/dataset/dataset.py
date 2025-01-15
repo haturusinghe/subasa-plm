@@ -134,7 +134,7 @@ class SOLDAugmentedDataset(SOLDDataset):
         self.output_dir = "json_dump"
 
         for item in self.dataset:
-            if item['label'] == 'OFF':
+            if item['label'] == 'OFF' and item['rationales'] != "[]":
                 self.offensive_data_only.append(item)
             elif item['label'] == 'NOT':
                 self.non_offensive_data_only.append(item)
