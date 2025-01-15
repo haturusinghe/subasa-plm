@@ -150,7 +150,8 @@ class SOLDAugmentedDataset(SOLDDataset):
             offensive_phrases = self.extract_offensive_phrases(text_tokens, raw_rationale_tokens)
             self.offensive_word_list.extend(offensive_phrases.keys())
 
-        
+        self.offensive_word_list = list(dict.fromkeys(self.offensive_word_list))
+
         self.pos_tagger = POSTagger()
         self.categoried_offensive_phrases = self.categorize_offensive_phrases(self.offensive_word_list, self.pos_tagger)
         self.save_offensive_word_list()
