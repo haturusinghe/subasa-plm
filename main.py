@@ -50,32 +50,6 @@ def set_seed(seed):
     np.random.seed(seed)
     random.seed(seed)
 
-def login_to_wandb():
-    api_key = os.getenv('WANDB_API_KEY')
-    if not api_key:
-        raise ValueError("WANDB_API_KEY not set in environment variables")
-    try:
-        result = subprocess.run(['wandb', 'login', api_key], 
-                              capture_output=True, 
-                              text=True, 
-                              check=True)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        raise RuntimeError(f"Failed to login to wandb: {str(e)}")
-
-def login_to_huggingface():
-    api_key = os.getenv('HF_TOKEN')
-    if not api_key:
-        raise ValueError("HF_TOKEN not set in environment variables")
-    try:
-        result = subprocess.run(['huggingface-cli', 'login', api_key], 
-                              capture_output=True, 
-                              text=True, 
-                              check=True)
-        return True
-    except (subprocess.CalledProcessError, FileNotFoundError) as e:
-        raise RuntimeError(f"Failed to login to Hugging Face: {str(e)}")
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Subasa - Adapting Language Models for Low Resourced Offensive Language Detection in Sinhala')
@@ -766,8 +740,6 @@ if __name__ == '__main__':
     args.exp_name, args.dir_result = setup_directories(args)
     print("Checkpoint path: ", args.dir_result)
 
-    # login_to_wandb() 
-    # login_to_huggingface()
 
     # Execute appropriate training/testing function based on configuration
     if args.finetuning_stage == 'pre':
