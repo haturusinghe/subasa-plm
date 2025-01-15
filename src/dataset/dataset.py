@@ -160,14 +160,17 @@ class SOLDAugmentedDataset(SOLDDataset):
     
     @staticmethod
     def extract_offensive_phrases(tokens, rationales, max_ngram=3):
+
         offensive_phrases = {}
-        
+
         # Find consecutive offensive tokens
         for n in range(1, max_ngram + 1):
             for i in range(len(tokens) - n + 1):
                 # Check if all tokens in this window are marked offensive
-                if all(rationales[i:i+n]):
-                    phrase = ' '.join(tokens[i:i+n])
+                rat_portion = rationales[i:i+n]
+                str_portion = tokens[i:i+n]
+                if all(rat_portion):
+                    phrase = ' '.join(str_portion)
                     if phrase not in offensive_phrases:
                         offensive_phrases[phrase] = 1
                     else:
@@ -190,13 +193,18 @@ class SOLDAugmentedDataset(SOLDDataset):
             
             # Determine phrase type based on POS pattern
             if all(tag[1].startswith('N') for tag in pos_tags):
-                categorized['noun_phrases'].append(pos_tags)
+                categorized['noun_phrases'].append(tuple(pos_tags))
             elif all(tag[1].startswith('V') for tag in pos_tags):
-                categorized['verb_phrases'].append(pos_tags)
+                categorized['verb_phrases'].append(tuple(pos_tags))
             elif all(tag[1].startswith('J') for tag in pos_tags):
-                categorized['adjective_phrases'].append(pos_tags)
+                categorized['adjective_phrases'].append(tuple(pos_tags))
             else:
-                categorized['mixed_phrases'].append(pos_tags)
+                categorized['mixed_phrases'].append(tuple(pos_tags))
+
+        categorized['noun_phrases'] = list(dict.fromkeys(categorized['noun_phrases']))
+        categorized['verb_phrases'] = list(dict.fromkeys(categorized['verb_phrases']))
+        categorized['adjective_phrases'] = list(dict.fromkeys(categorized['adjective_phrases']))
+        categorized['mixed_phrases'] = list(dict.fromkeys(categorized['mixed_phrases']))
                 
         return categorized
 
