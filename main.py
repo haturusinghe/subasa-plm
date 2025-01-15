@@ -2,23 +2,17 @@
 import argparse
 import gc
 import json
-import logging
 import os
 import random 
-import sys
-import time
 from datetime import datetime
-from math import ceil, floor
-from pathlib import Path
+from math import ceil
 
 # Third party imports
 import numpy as np
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 import torch_optimizer as optim
 import wandb
-from sklearn.metrics import f1_score, accuracy_score
 from sklearn.preprocessing import MultiLabelBinarizer
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -28,8 +22,6 @@ from transformers import (
     XLMRobertaForTokenClassification,
     XLMRobertaTokenizer,
     DataCollatorForLanguageModeling,
-    TrainingArguments,
-    Trainer,
 )
 
 # Local imports
@@ -41,10 +33,8 @@ from src.utils.helpers import (
     GetLossAverage,
     NumpyEncoder, 
     add_tokens_to_tokenizer,
-    get_checkpoint_path,
     get_device,
     save_checkpoint,
-    setup_experiment_name,
     setup_directories
 )
 from src.utils.logging_utils import setup_logging
