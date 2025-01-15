@@ -2,6 +2,7 @@ from datasets import Dataset as HFDataset
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 from ast import literal_eval
+from sinling import SinhalaTokenizer, POSTagger
 
 from transformers import XLMRobertaTokenizer
 import copy
@@ -121,3 +122,99 @@ class SOLDDataset(Dataset):
         
         else:
             return ()
+
+
+class SOLDAugmentedDataset(SOLDDataset):
+    def __init__(self, args, mode='train', tokenizer=None):
+        super().__init__(args, mode, tokenizer)
+        self.offensive_data_only = []
+        self.non_offensive_data_only = []
+        self.offensive_word_list = []
+        self.categoried_offensive_phrases = {}
+        self.output_dir = "json_dump"
+
+        for item in self.dataset:
+            if item['label'] == 'OFF':
+                self.offensive_data_only.append(item)
+            elif item['label'] == 'NOT':
+                self.non_offensive_data_only.append(item)
+        
+        self.offensive_data_only.sort(key=lambda x: x['post_id'])
+        self.non_offensive_data_only.sort(key=lambda x: x['post_id'])
+
+        for item in self.offensive_data_only:
+            text_tokens = item['tokens'].split()
+            raw_rationale_tokens = literal_eval(item['rationales'])
+
+            # Find offensive phrases in this text
+            offensive_phrases = self.extract_offensive_phrases(text_tokens, raw_rationale_tokens)
+            self.offensive_word_list.extend(offensive_phrases.keys())
+
+        
+        self.pos_tagger = POSTagger()
+        self.categoried_offensive_phrases = self.categorize_offensive_phrases(self.offensive_word_list, self.pos_tagger)
+        self.save_offensive_word_list()
+        self.save_category_phrases()
+    
+    
+    @staticmethod
+    def extract_offensive_phrases(tokens, rationales, max_ngram=3):
+        offensive_phrases = {}
+        
+        # Find consecutive offensive tokens
+        for n in range(1, max_ngram + 1):
+            for i in range(len(tokens) - n + 1):
+                # Check if all tokens in this window are marked offensive
+                if all(rationales[i:i+n]):
+                    phrase = ' '.join(tokens[i:i+n])
+                    if phrase not in offensive_phrases:
+                        offensive_phrases[phrase] = 1
+                    else:
+                        offensive_phrases[phrase] += 1
+                        
+        return offensive_phrases
+
+    @staticmethod
+    def categorize_offensive_phrases(phrases, pos_tagger):
+        categorized = {
+            'noun_phrases': [],
+            'verb_phrases': [],
+            'adjective_phrases': [],
+            'mixed_phrases': []
+        }
+        
+        for phrase in phrases:
+            tokens = phrase.split()
+            pos_tags = pos_tagger.predict([tokens])[0]
+            
+            # Determine phrase type based on POS pattern
+            if all(tag[1].startswith('N') for tag in pos_tags):
+                categorized['noun_phrases'].append(pos_tags)
+            elif all(tag[1].startswith('V') for tag in pos_tags):
+                categorized['verb_phrases'].append(pos_tags)
+            elif all(tag[1].startswith('J') for tag in pos_tags):
+                categorized['adjective_phrases'].append(pos_tags)
+            else:
+                categorized['mixed_phrases'].append(pos_tags)
+                
+        return categorized
+
+    def save_category_phrases(self):
+        file_save_path = os.path.join(self.output_dir, 'offensive_phrases.json')
+        #make directory if it does not exist
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
+        with open(os.path.join(self.output_dir, 'offensive_phrases.json'), 'w', encoding='utf-8') as f:
+            json.dump(self.categoried_offensive_phrases, f, ensure_ascii=False, indent=2)
+    
+    def save_offensive_word_list(self):
+        file_save_path = os.path.join(self.output_dir, 'offensive_word_list.json')
+        #make directory if it does not exist
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
+        with open(os.path.join(self.output_dir, 'offensive_word_list.json'), 'w', encoding='utf-8') as f:
+            json.dump(self.offensive_word_list, f, ensure_ascii=False, indent=2)
+
+
+        
+
