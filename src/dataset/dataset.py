@@ -243,6 +243,7 @@ class SOLDAugmentedDataset(SOLDDataset):
         modified_tokens = tokens.copy()
         offensive_lexicon = self.categoried_offensive_phrases
         inserted_positions = set()
+        count_of_inserted = 0
         
         # Define insertion probabilities
         NOUN_MODIFIER_PROB = 0.5
@@ -250,6 +251,10 @@ class SOLDAugmentedDataset(SOLDDataset):
         INTERJECTION_PROB = 0.2
         
         for i, (token, tag) in enumerate(pos_tags):
+
+            if count_of_inserted >= MAX_NEW_PHRASES_ALLOWED:
+                break
+
             if i in inserted_positions:
                 continue
                 
@@ -258,12 +263,14 @@ class SOLDAugmentedDataset(SOLDDataset):
                     offensive_modifier = random.choice(offensive_lexicon['noun_modifiers'])
                     modified_tokens.insert(i, offensive_modifier)
                     inserted_positions.add(i)
+                    count_of_inserted += 1
                     
             elif tag[1].startswith('VB') and offensive_lexicon['verb_intensifiers']:
                 if random.random() < VERB_INTENSIFIER_PROB:
                     offensive_intensifier = random.choice(offensive_lexicon['verb_intensifiers'])
                     modified_tokens.insert(i + 1, offensive_intensifier)
                     inserted_positions.add(i + 1)
+                    count_of_inserted += 1
         
         if random.random() < INTERJECTION_PROB and offensive_lexicon['interjections']:
             if random.choice([True, False]):
