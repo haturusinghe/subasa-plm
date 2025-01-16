@@ -297,7 +297,7 @@ class SOLDAugmentedDataset(SOLDDataset):
             return None, None
 
     @staticmethod
-    def extract_offensive_phrases(tokens, rationales, max_ngram=3):
+    def extract_offensive_phrases(tokens, rationales, max_ngram=1):
 
         offensive_phrases = {}
 
