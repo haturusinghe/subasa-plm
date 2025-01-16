@@ -166,9 +166,13 @@ class SOLDAugmentedDataset(SOLDDataset):
         """Process POS tags for both offensive and non-offensive data."""
         for item in self.offensive_data_only:
             text_tokens = item['tokens'].split()
+            rationale = literal_eval(item['rationales'])
+            positions_of_offensive_tokens = [i for i, r in enumerate(rationale) if r == 1]
             pos_tags = self.pos_tagger.predict([text_tokens])[0]
+            post_tags_offensive_only = [pos_tags[i] for i in positions_of_offensive_tokens]
             self.offensive_data_with_pos_tags.append(pos_tags)
-        
+            self.offensive_single_word_list_with_pos_tags.extend(post_tags_offensive_only)
+
         for item in self.non_offensive_data_only:
             text_tokens = item['tokens'].split()
             pos_tags = self.pos_tagger.predict([text_tokens])[0]
