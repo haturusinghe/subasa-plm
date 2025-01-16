@@ -172,6 +172,26 @@ class SOLDAugmentedDataset(SOLDDataset):
         self.categoried_offensive_phrases = self.categorize_offensive_phrases(self.offensive_word_list, self.pos_tagger)
         self.save_offensive_word_list()
         self.save_category_phrases()
+
+        for item in self.non_offensive_data_only:
+            text_tokens = item['tokens'].split()
+            raw_rationale_tokens = [0] * len(text_tokens)
+
+            augmented_sentences, augmented_rationale = self.convert_non_offensive_sentence_to_offensive(text_tokens, raw_rationale_tokens)
+            if augmented_sentences == '':
+                self.non_offensive_data_only.remove(item)
+            else:
+                # TODO : convert augmented_rationale array to a string
+                new_item = { 'post_id': item['post_id'], 'tokens': augmented_sentences, 'label': item['label'], 'rationales': augmented_rationale }
+                self.augmented_data.append(new_item)
+
+
+    
+    def convert_non_offensive_sentence_to_offensive(self, tokens, rationales):
+        pos_tags = self.pos_tagger.predict([tokens])
+
+        #analzye the part of speech tags to find a suitable way to convert the sentence to offensive
+        # TODO 
     
     
     @staticmethod
