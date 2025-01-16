@@ -249,6 +249,7 @@ class SOLDAugmentedDataset(SOLDDataset):
         NOUN_MODIFIER_PROB = 0.5
         VERB_INTENSIFIER_PROB = 0.3
         INTERJECTION_PROB = 0.2
+        MAX_NEW_PHRASES_ALLOWED = 3
         
         for i, (token, tag) in enumerate(pos_tags):
 
@@ -272,13 +273,28 @@ class SOLDAugmentedDataset(SOLDDataset):
                     inserted_positions.add(i + 1)
                     count_of_inserted += 1
         
-        if random.random() < INTERJECTION_PROB and offensive_lexicon['interjections']:
-            if random.choice([True, False]):
-                modified_tokens.insert(0, random.choice(offensive_lexicon['interjections']))
-            else:
-                modified_tokens.append(random.choice(offensive_lexicon['interjections']))
+        if count_of_inserted <= MAX_NEW_PHRASES_ALLOWED:
+            if random.random() < INTERJECTION_PROB and offensive_lexicon['interjections']:
+                if random.choice([True, False]):
+                    modified_tokens.insert(0, random.choice(offensive_lexicon['interjections']))
+                    inserted_positions.add(0)
+                else:
+                    modified_tokens.append(random.choice(offensive_lexicon['interjections']))
+                    inserted_positions.add(len(modified_tokens) - 1)
         
-        return modified_tokens if modified_tokens != tokens else None
+        pre_modified_tokens = modified_tokens.copy()
+        after_modification_rationale_tokens = []
+
+        for i, (token, rationale_token) in enumerate(zip(pre_modified_tokens, raw_rationale_tokens)):
+            if i in inserted_positions:
+                if len(token.split()) > 1:
+                    rationale_token = '1' * len(token.split())
+            after_modification_rationale_tokens.extend(rationale_token)
+        
+        if modified_tokens != tokens:
+            return modified_tokens, after_modification_rationale_tokens
+        else:
+            return None, None
 
     @staticmethod
     def extract_offensive_phrases(tokens, rationales, max_ngram=3):
