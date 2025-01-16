@@ -265,7 +265,7 @@ class SOLDAugmentedDataset(SOLDDataset):
 
         self._save_augmented_data()
 
-    def offensive_token_insertion(self, tokens, pos_tags, raw_rationale_tokens):
+    def offensive_token_insertion(self, tokens, pos_tags):
         """
         Insert offensive tokens into a non-offensive sentence based on POS patterns.
         Returns modified tokens or None if no valid insertions possible.
@@ -310,24 +310,35 @@ class SOLDAugmentedDataset(SOLDDataset):
             if random.random() < INTERJECTION_PROB and offensive_lexicon['interjections']:
                 if random.choice([True, False]):
                     modified_tokens.insert(0, random.choice(offensive_lexicon['interjections']))
+                    # if 0 is already in the inserted_positions, make it 1
+                    if 0 in inserted_positions:
+                        inserted_positions.add(1)
+
                     inserted_positions.add(0)
                 else:
                     modified_tokens.append(random.choice(offensive_lexicon['interjections']))
                     inserted_positions.add(len(modified_tokens) - 1)
         
         pre_modified_tokens = modified_tokens.copy()
+        raw_rationale_tokens = [0] * len(pre_modified_tokens)
         after_modification_rationale_tokens = []
 
         for i, (token, rationale_token) in enumerate(zip(pre_modified_tokens, raw_rationale_tokens)):
             if i in inserted_positions:
                 if len(token.split()) > 1:
-                    rationale_token = '1' * len(token.split())
+                    rationale_token = [1] * len(token.split())
+                else:
+                    rationale_token = [1]
+            else:
+                rationale_token = [0]
             after_modification_rationale_tokens.extend(rationale_token)
         
-        if modified_tokens != tokens:
-            return modified_tokens, after_modification_rationale_tokens
-        else:
+        new_setence = ' '.join(pre_modified_tokens)
+
+        if new_setence.split() == tokens:
             return None, None
+        
+        return pre_modified_tokens, after_modification_rationale_tokens
 
     @staticmethod
     def extract_offensive_phrases(tokens, rationales, max_ngram=1):
