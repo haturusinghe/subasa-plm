@@ -238,22 +238,32 @@ class SOLDAugmentedDataset(SOLDDataset):
             raw_rationale_tokens = [0] * len(text_tokens)
             pos_tags = self.pos_tagger.predict([text_tokens])[0]
             
-            try:
-                augmented_tokens, augmented_rationale = self.offensive_token_insertion(text_tokens, pos_tags, raw_rationale_tokens)
-                if augmented_tokens:
-                    augmented_sentence = ' '.join(augmented_tokens)
-                    augmented_rationale = '[' + ','.join(['1' if i >= len(text_tokens) else '0' 
-                                                        for i in range(len(augmented_tokens))]) + ']'
-                    
-                    new_item = {
-                        'post_id': f"{item['post_id']}_aug",
-                        'tokens': augmented_sentence,
-                        'label': 'OFF',
-                        'rationales': augmented_rationale
-                    }
-                    self.augmented_data.append(new_item)
-            except Exception as e:
-                self.logger.warning(f"Failed to augment item {item['post_id']}: {str(e)}")
+            augmented_tokens, augmented_rationale = self.offensive_token_insertion(text_tokens, pos_tags)
+            if augmented_tokens and augmented_rationale:
+                augmented_sentence = ' '.join(augmented_tokens)
+            
+                new_item = {
+                    'post_id': f"{item['post_id']}_aug",
+                    'text': augmented_sentence,
+                    'tokens': augmented_sentence,
+                    'rationales': str(augmented_rationale),
+                    'label': 'OFF',
+                }
+                self.augmented_data.append(new_item)
+                self.non_offensive_data_selected.append(item)
+        
+        # make copy of the augmented data and extend it with non_offensive_data_selected to create the final dataset
+        copy_of_augmented_data = copy.deepcopy(self.augmented_data)
+        copy_of_augmented_data.extend(self.non_offensive_data_selected)
+        random.shuffle(copy_of_augmented_data)
+        self.dataset = copy_of_augmented_data
+
+        # Print length of each dataset
+        self.logger.info(f"[AUGMENTED] [AUGMENTED_DATA_LEN] {len(self.augmented_data)}")
+        self.logger.info(f"[AUGMENTED] [NON_OFFENSIVE_DATA_SELECTED_LEN] {len(self.non_offensive_data_selected)}")
+        self.logger.info(f"[AUGMENTED] [FINAL_DATASET_LEN] {len(self.dataset)}")
+
+        self._save_augmented_data()
 
     def offensive_token_insertion(self, tokens, pos_tags, raw_rationale_tokens):
         """
