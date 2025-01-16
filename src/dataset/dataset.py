@@ -182,8 +182,9 @@ class SOLDAugmentedDataset(SOLDDataset):
         """Extract and categorize offensive phrases."""
         self._extract_offensive_words()
         self.offensive_word_list = list(dict.fromkeys(self.offensive_word_list))
+        self.offensive_single_word_list_with_pos_tags = self.remove_duplicates(self.offensive_single_word_list_with_pos_tags)
         self.categoried_offensive_phrases = self.categorize_offensive_phrases(
-            self.offensive_word_list, 
+            self.offensive_single_word_list_with_pos_tags, # self.offensive_word_list, 
             self.pos_tagger
         )
         self._save_processed_data()
