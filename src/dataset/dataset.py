@@ -289,6 +289,14 @@ class SOLDAugmentedDataset(SOLDDataset):
         with open(os.path.join(self.output_dir, 'non_offensive_data_with_pos_tags.json'), 'w', encoding='utf-8') as f:
             json.dump(self.non_offensive_data_with_pos_tags, f, ensure_ascii=False, indent=2)
     
+    def save_offensive_data_with_pos_tags(self):
+        file_save_path = os.path.join(self.output_dir, 'offensive_data_with_pos_tags.json')
+        #make directory if it does not exist
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
+        with open(os.path.join(self.output_dir, 'offensive_data_with_pos_tags.json'), 'w', encoding='utf-8') as f:
+            json.dump(self.offensive_data_with_pos_tags, f, ensure_ascii=False, indent=2)
+    
     def save_offensive_word_list(self):
         file_save_path = os.path.join(self.output_dir, 'offensive_word_list.json')
         #make directory if it does not exist
