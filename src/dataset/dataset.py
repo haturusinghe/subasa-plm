@@ -132,6 +132,9 @@ class SOLDAugmentedDataset(SOLDDataset):
         self.offensive_word_list = []
         self.categoried_offensive_phrases = {}
         self.output_dir = "json_dump"
+        self.augmented_data = []
+        self.offensive_data_with_pos_tags = []
+        self.non_offensive_data_with_pos_tags = []
 
         for item in self.dataset:
             if item['label'] == 'OFF' and item['rationales'] != "[]":
