@@ -506,3 +506,10 @@ class SOLDAugmentedDataset(SOLDDataset):
                 modified_tokens.append(random.choice(offensive_lexicon['interjections']))
         
         return modified_tokens
+    
+    @staticmethod
+    def remove_duplicates(list_of_pairs):
+        seen = {}
+        return list(dict.fromkeys(map(tuple, list_of_pairs)).keys())
+
+
