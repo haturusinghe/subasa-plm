@@ -141,11 +141,13 @@ class SOLDAugmentedDataset(SOLDDataset):
         self.offensive_word_list = []
         self.categoried_offensive_phrases = {}
         self.augmented_data = []
+        self.non_offensive_data_selected = []
         self.offensive_data_with_pos_tags = []
         self.non_offensive_data_with_pos_tags = []
         self.pos_tagger = POSTagger()
         self.final_non_offensive_data = []
         self.final_offensive_data = []
+        self.offensive_single_word_list_with_pos_tags = []
 
     def load_and_process_data(self):
         """Load and separate offensive and non-offensive data."""
