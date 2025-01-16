@@ -156,6 +156,19 @@ class SOLDAugmentedDataset(SOLDDataset):
         self.offensive_word_list = list(dict.fromkeys(self.offensive_word_list))
 
         self.pos_tagger = POSTagger()
+
+        for item in self.offensive_data_only:
+            text_tokens = item['tokens'].split()
+            pos_tags = self.pos_tagger.predict([text_tokens])[0]
+            self.offensive_data_with_pos_tags.append(pos_tags)
+        
+        for item in self.non_offensive_data_only:
+            text_tokens = item['tokens'].split()
+            pos_tags = self.pos_tagger.predict([text_tokens])[0]
+            self.non_offensive_data_with_pos_tags.append(pos_tags)
+
+        self.save_offensive_data_with_pos_tags()
+        self.save_non_offensive_data_with_pos_tags()
         self.categoried_offensive_phrases = self.categorize_offensive_phrases(self.offensive_word_list, self.pos_tagger)
         self.save_offensive_word_list()
         self.save_category_phrases()
@@ -218,6 +231,14 @@ class SOLDAugmentedDataset(SOLDDataset):
             os.makedirs(self.output_dir)
         with open(os.path.join(self.output_dir, 'offensive_phrases.json'), 'w', encoding='utf-8') as f:
             json.dump(self.categoried_offensive_phrases, f, ensure_ascii=False, indent=2)
+
+    def save_non_offensive_data_with_pos_tags(self):
+        file_save_path = os.path.join(self.output_dir, 'non_offensive_data_with_pos_tags.json')
+        #make directory if it does not exist
+        if not os.path.exists(self.output_dir):
+            os.makedirs(self.output_dir)
+        with open(os.path.join(self.output_dir, 'non_offensive_data_with_pos_tags.json'), 'w', encoding='utf-8') as f:
+            json.dump(self.non_offensive_data_with_pos_tags, f, ensure_ascii=False, indent=2)
     
     def save_offensive_word_list(self):
         file_save_path = os.path.join(self.output_dir, 'offensive_word_list.json')
