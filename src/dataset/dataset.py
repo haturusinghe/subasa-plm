@@ -235,7 +235,6 @@ class SOLDAugmentedDataset(SOLDDataset):
         """Generate augmented offensive data from non-offensive sentences."""
         for item in self.non_offensive_data_only[:]:  # Create a copy to iterate
             text_tokens = item['tokens'].split()
-            raw_rationale_tokens = [0] * len(text_tokens)
             pos_tags = self.pos_tagger.predict([text_tokens])[0]
             
             augmented_tokens, augmented_rationale = self.offensive_token_insertion(text_tokens, pos_tags)
@@ -451,8 +450,9 @@ class SOLDAugmentedDataset(SOLDDataset):
         # Remove duplicates while preserving order
         for category in categorized:
             categorized[category] = list(dict.fromkeys(categorized[category]))
-                    
+            
         return categorized
+
 
 
 
