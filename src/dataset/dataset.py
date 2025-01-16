@@ -3,6 +3,7 @@ from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 from ast import literal_eval
 from sinling import SinhalaTokenizer, POSTagger
+import random
 
 from transformers import XLMRobertaTokenizer
 import copy
@@ -127,15 +128,25 @@ class SOLDDataset(Dataset):
 class SOLDAugmentedDataset(SOLDDataset):
     def __init__(self, args, mode='train', tokenizer=None):
         super().__init__(args, mode, tokenizer)
+        self.output_dir = "json_dump"
+        self.initialize_data_structures()
+        self.load_and_process_data()
+        self.process_offensive_words()
+        self.generate_augmented_data()
+
+    def initialize_data_structures(self):
+        """Initialize all data structures used by the class."""
         self.offensive_data_only = []
         self.non_offensive_data_only = []
         self.offensive_word_list = []
         self.categoried_offensive_phrases = {}
-        self.output_dir = "json_dump"
         self.augmented_data = []
         self.offensive_data_with_pos_tags = []
         self.non_offensive_data_with_pos_tags = []
+        self.pos_tagger = POSTagger()
 
+    def load_and_process_data(self):
+        """Load and separate offensive and non-offensive data."""
         for item in self.dataset:
             if item['label'] == 'OFF' and item['rationales'] != "[]":
                 self.offensive_data_only.append(item)
@@ -144,19 +155,11 @@ class SOLDAugmentedDataset(SOLDDataset):
         
         self.offensive_data_only.sort(key=lambda x: x['post_id'])
         self.non_offensive_data_only.sort(key=lambda x: x['post_id'])
+        
+        self._process_pos_tags()
 
-        for item in self.offensive_data_only:
-            text_tokens = item['tokens'].split()
-            raw_rationale_tokens = literal_eval(item['rationales'])
-
-            # Find offensive phrases in this text
-            offensive_phrases = self.extract_offensive_phrases(text_tokens, raw_rationale_tokens)
-            self.offensive_word_list.extend(offensive_phrases.keys())
-
-        self.offensive_word_list = list(dict.fromkeys(self.offensive_word_list))
-
-        self.pos_tagger = POSTagger()
-
+    def _process_pos_tags(self):
+        """Process POS tags for both offensive and non-offensive data."""
         for item in self.offensive_data_only:
             text_tokens = item['tokens'].split()
             pos_tags = self.pos_tagger.predict([text_tokens])[0]
@@ -167,33 +170,107 @@ class SOLDAugmentedDataset(SOLDDataset):
             pos_tags = self.pos_tagger.predict([text_tokens])[0]
             self.non_offensive_data_with_pos_tags.append(pos_tags)
 
-        self.save_offensive_data_with_pos_tags()
-        self.save_non_offensive_data_with_pos_tags()
-        self.categoried_offensive_phrases = self.categorize_offensive_phrases(self.offensive_word_list, self.pos_tagger)
-        self.save_offensive_word_list()
-        self.save_category_phrases()
+    def process_offensive_words(self):
+        """Extract and categorize offensive phrases."""
+        self._extract_offensive_words()
+        self.offensive_word_list = list(dict.fromkeys(self.offensive_word_list))
+        self.categoried_offensive_phrases = self.categorize_offensive_phrases(
+            self.offensive_word_list, 
+            self.pos_tagger
+        )
+        self._save_processed_data()
 
-        for item in self.non_offensive_data_only:
+    def _extract_offensive_words(self):
+        """Extract offensive phrases from the dataset."""
+        for item in self.offensive_data_only:
+            text_tokens = item['tokens'].split()
+            raw_rationale_tokens = literal_eval(item['rationales'])
+            offensive_phrases = self.extract_offensive_phrases(
+                text_tokens, 
+                raw_rationale_tokens
+            )
+            self.offensive_word_list.extend(offensive_phrases.keys())
+
+    def _save_processed_data(self):
+        """Save all processed data to JSON files."""
+        os.makedirs(self.output_dir, exist_ok=True)
+        data_to_save = {
+            'offensive_phrases.json': self.categoried_offensive_phrases,
+            'non_offensive_data_with_pos_tags.json': self.non_offensive_data_with_pos_tags,
+            'offensive_data_with_pos_tags.json': self.offensive_data_with_pos_tags,
+            'offensive_word_list.json': self.offensive_word_list
+        }
+        
+        for filename, data in data_to_save.items():
+            filepath = os.path.join(self.output_dir, filename)
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+
+    def generate_augmented_data(self):
+        """Generate augmented offensive data from non-offensive sentences."""
+        for item in self.non_offensive_data_only[:]:  # Create a copy to iterate
             text_tokens = item['tokens'].split()
             raw_rationale_tokens = [0] * len(text_tokens)
+            pos_tags = self.pos_tagger.predict([text_tokens])[0]
+            
+            try:
+                augmented_tokens = self.offensive_token_insertion(text_tokens, pos_tags)
+                if augmented_tokens:
+                    augmented_sentence = ' '.join(augmented_tokens)
+                    augmented_rationale = '[' + ','.join(['1' if i >= len(text_tokens) else '0' 
+                                                        for i in range(len(augmented_tokens))]) + ']'
+                    
+                    new_item = {
+                        'post_id': f"{item['post_id']}_aug",
+                        'tokens': augmented_sentence,
+                        'label': 'OFF',
+                        'rationales': augmented_rationale
+                    }
+                    self.augmented_data.append(new_item)
+            except Exception as e:
+                self.logger.warning(f"Failed to augment item {item['post_id']}: {str(e)}")
 
-            augmented_sentences, augmented_rationale = self.convert_non_offensive_sentence_to_offensive(text_tokens, raw_rationale_tokens)
-            if augmented_sentences == '':
-                self.non_offensive_data_only.remove(item)
+    def offensive_token_insertion(self, tokens, pos_tags):
+        """
+        Insert offensive tokens into a non-offensive sentence based on POS patterns.
+        Returns modified tokens or None if no valid insertions possible.
+        """
+        if not tokens or not pos_tags:
+            return None
+            
+        modified_tokens = tokens.copy()
+        offensive_lexicon = self.categoried_offensive_phrases
+        inserted_positions = set()
+        
+        # Define insertion probabilities
+        NOUN_MODIFIER_PROB = 0.5
+        VERB_INTENSIFIER_PROB = 0.3
+        INTERJECTION_PROB = 0.2
+        
+        for i, (token, tag) in enumerate(pos_tags):
+            if i in inserted_positions:
+                continue
+                
+            if tag[1].startswith('NN') and offensive_lexicon['noun_modifiers']:
+                if random.random() < NOUN_MODIFIER_PROB:
+                    offensive_modifier = random.choice(offensive_lexicon['noun_modifiers'])
+                    modified_tokens.insert(i, offensive_modifier)
+                    inserted_positions.add(i)
+                    
+            elif tag[1].startswith('VB') and offensive_lexicon['verb_intensifiers']:
+                if random.random() < VERB_INTENSIFIER_PROB:
+                    offensive_intensifier = random.choice(offensive_lexicon['verb_intensifiers'])
+                    modified_tokens.insert(i + 1, offensive_intensifier)
+                    inserted_positions.add(i + 1)
+        
+        if random.random() < INTERJECTION_PROB and offensive_lexicon['interjections']:
+            if random.choice([True, False]):
+                modified_tokens.insert(0, random.choice(offensive_lexicon['interjections']))
             else:
-                # TODO : convert augmented_rationale array to a string
-                new_item = { 'post_id': item['post_id'], 'tokens': augmented_sentences, 'label': item['label'], 'rationales': augmented_rationale }
-                self.augmented_data.append(new_item)
+                modified_tokens.append(random.choice(offensive_lexicon['interjections']))
+        
+        return modified_tokens if modified_tokens != tokens else None
 
-
-    
-    def convert_non_offensive_sentence_to_offensive(self, tokens, rationales):
-        pos_tags = self.pos_tagger.predict([tokens])
-
-        #analzye the part of speech tags to find a suitable way to convert the sentence to offensive
-        # TODO 
-    
-    
     @staticmethod
     def extract_offensive_phrases(tokens, rationales, max_ngram=3):
 
@@ -293,40 +370,7 @@ class SOLDAugmentedDataset(SOLDDataset):
 
 
 
-    def save_category_phrases(self):
-        file_save_path = os.path.join(self.output_dir, 'offensive_phrases.json')
-        #make directory if it does not exist
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
-        with open(os.path.join(self.output_dir, 'offensive_phrases.json'), 'w', encoding='utf-8') as f:
-            json.dump(self.categoried_offensive_phrases, f, ensure_ascii=False, indent=2)
-
-    def save_non_offensive_data_with_pos_tags(self):
-        file_save_path = os.path.join(self.output_dir, 'non_offensive_data_with_pos_tags.json')
-        #make directory if it does not exist
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
-        with open(os.path.join(self.output_dir, 'non_offensive_data_with_pos_tags.json'), 'w', encoding='utf-8') as f:
-            json.dump(self.non_offensive_data_with_pos_tags, f, ensure_ascii=False, indent=2)
-    
-    def save_offensive_data_with_pos_tags(self):
-        file_save_path = os.path.join(self.output_dir, 'offensive_data_with_pos_tags.json')
-        #make directory if it does not exist
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
-        with open(os.path.join(self.output_dir, 'offensive_data_with_pos_tags.json'), 'w', encoding='utf-8') as f:
-            json.dump(self.offensive_data_with_pos_tags, f, ensure_ascii=False, indent=2)
-    
-    def save_offensive_word_list(self):
-        file_save_path = os.path.join(self.output_dir, 'offensive_word_list.json')
-        #make directory if it does not exist
-        if not os.path.exists(self.output_dir):
-            os.makedirs(self.output_dir)
-        with open(os.path.join(self.output_dir, 'offensive_word_list.json'), 'w', encoding='utf-8') as f:
-            json.dump(self.offensive_word_list, f, ensure_ascii=False, indent=2)
-    
-   
-    def offensive_token_insertion(self, tokens, pos_tags):
+    def offensive_token_insertion_old(self, tokens, pos_tags):
         """
         Insert offensive tokens into a non-offensive sentence based on POS patterns
         
