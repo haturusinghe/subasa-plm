@@ -258,14 +258,14 @@ class SOLDAugmentedDataset(SOLDDataset):
             if i in inserted_positions:
                 continue
                 
-            if tag[1].startswith('NN') and offensive_lexicon['noun_modifiers']:
+            if tag.startswith('NN') and offensive_lexicon['noun_modifiers']:
                 if random.random() < NOUN_MODIFIER_PROB:
                     offensive_modifier = random.choice(offensive_lexicon['noun_modifiers'])
                     modified_tokens.insert(i, offensive_modifier)
                     inserted_positions.add(i)
                     count_of_inserted += 1
                     
-            elif tag[1].startswith('VB') and offensive_lexicon['verb_intensifiers']:
+            elif tag.startswith('VB') and offensive_lexicon['verb_intensifiers']:
                 if random.random() < VERB_INTENSIFIER_PROB:
                     offensive_intensifier = random.choice(offensive_lexicon['verb_intensifiers'])
                     modified_tokens.insert(i + 1, offensive_intensifier)
