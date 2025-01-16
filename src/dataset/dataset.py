@@ -144,6 +144,8 @@ class SOLDAugmentedDataset(SOLDDataset):
         self.offensive_data_with_pos_tags = []
         self.non_offensive_data_with_pos_tags = []
         self.pos_tagger = POSTagger()
+        self.final_non_offensive_data = []
+        self.final_offensive_data = []
 
     def load_and_process_data(self):
         """Load and separate offensive and non-offensive data."""
@@ -214,7 +216,7 @@ class SOLDAugmentedDataset(SOLDDataset):
             pos_tags = self.pos_tagger.predict([text_tokens])[0]
             
             try:
-                augmented_tokens = self.offensive_token_insertion(text_tokens, pos_tags)
+                augmented_tokens, augmented_rationale = self.offensive_token_insertion(text_tokens, pos_tags, raw_rationale_tokens)
                 if augmented_tokens:
                     augmented_sentence = ' '.join(augmented_tokens)
                     augmented_rationale = '[' + ','.join(['1' if i >= len(text_tokens) else '0' 
@@ -230,7 +232,7 @@ class SOLDAugmentedDataset(SOLDDataset):
             except Exception as e:
                 self.logger.warning(f"Failed to augment item {item['post_id']}: {str(e)}")
 
-    def offensive_token_insertion(self, tokens, pos_tags):
+    def offensive_token_insertion(self, tokens, pos_tags, raw_rationale_tokens):
         """
         Insert offensive tokens into a non-offensive sentence based on POS patterns.
         Returns modified tokens or None if no valid insertions possible.
