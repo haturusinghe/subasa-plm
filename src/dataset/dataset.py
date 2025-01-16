@@ -207,13 +207,29 @@ class SOLDAugmentedDataset(SOLDDataset):
             'offensive_phrases.json': self.categoried_offensive_phrases,
             'non_offensive_data_with_pos_tags.json': self.non_offensive_data_with_pos_tags,
             'offensive_data_with_pos_tags.json': self.offensive_data_with_pos_tags,
-            'offensive_word_list.json': self.offensive_word_list
+            'offensive_word_list.json': self.offensive_single_word_list_with_pos_tags
         }
         
         for filename, data in data_to_save.items():
             filepath = os.path.join(self.output_dir, filename)
             with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
+                json.dump(data, f, ensure_ascii=False, indent=1)
+    
+    def _save_augmented_data(self):
+        """Save augmented data to a JSON file."""
+        os.makedirs(self.output_dir, exist_ok=True)
+        data_to_save = {
+            'augmented_data.json': self.augmented_data,
+            'non_offensive_data_selected.json': self.non_offensive_data_selected,
+            'final_datsaset.json': self.dataset
+        }
+
+        for filename, data in data_to_save.items():
+            filepath = os.path.join(self.output_dir, filename)
+            with open(filepath, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=1)
+        
+
 
     def generate_augmented_data(self):
         """Generate augmented offensive data from non-offensive sentences."""
