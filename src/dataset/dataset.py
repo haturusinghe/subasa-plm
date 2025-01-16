@@ -304,7 +304,55 @@ class SOLDAugmentedDataset(SOLDDataset):
             os.makedirs(self.output_dir)
         with open(os.path.join(self.output_dir, 'offensive_word_list.json'), 'w', encoding='utf-8') as f:
             json.dump(self.offensive_word_list, f, ensure_ascii=False, indent=2)
-
-
+    
+   
+    def offensive_token_insertion(self, tokens, pos_tags):
+        """
+        Insert offensive tokens into a non-offensive sentence based on POS patterns
         
-
+        Args:
+            tokens: List of original sentence tokens
+            pos_tags: List of POS tags for each token [(word1, tag1), (word2, tag2),...]
+            offensive_lexicon: Dictionary with categories of offensive words
+                {
+                    'noun_modifiers': [...],  # offensive words that can modify nouns
+                    'verb_intensifiers': [...],  # offensive words that can intensify verbs
+                    'interjections': [...],  # standalone offensive expressions
+                    'offensive_nouns': [...],  # offensive nouns for replacement
+                }
+        """
+        import random
+        modified_tokens = tokens.copy()
+        offensive_lexicon = self.categoried_offensive_phrases
+        
+        # Track insertion positions to avoid multiple insertions at same spot
+        inserted_positions = set()
+        
+        # Iterate through tokens and their POS tags
+        for i, (token, tag) in enumerate(pos_tags):
+            # Skip if we already inserted at this position
+            if i in inserted_positions:
+                continue
+                
+            # Case 1: Insert before nouns
+            if tag[1].startswith('NN'):
+                if random.random() < 0.5:  # 50% chance to insert
+                    offensive_modifier = random.choice(offensive_lexicon['noun_modifiers'])
+                    modified_tokens.insert(i, offensive_modifier)
+                    inserted_positions.add(i)
+                    
+            # Case 2: Insert after verbs
+            elif tag[1].startswith('VB'):
+                if random.random() < 0.3:  # 30% chance to insert
+                    offensive_intensifier = random.choice(offensive_lexicon['verb_intensifiers'])
+                    modified_tokens.insert(i + 1, offensive_intensifier)
+                    inserted_positions.add(i + 1)
+        
+        # Case 3: Add interjection at the beginning or end (20% chance)
+        if random.random() < 0.2:
+            if random.choice([True, False]):  # randomly choose start or end
+                modified_tokens.insert(0, random.choice(offensive_lexicon['interjections']))
+            else:
+                modified_tokens.append(random.choice(offensive_lexicon['interjections']))
+        
+        return modified_tokens
