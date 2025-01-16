@@ -1,4 +1,5 @@
 json_dump
+json_dump_*
 # model checkpoints
 pre_finetune/
 final_finetune/
