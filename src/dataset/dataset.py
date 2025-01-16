@@ -195,7 +195,7 @@ class SOLDAugmentedDataset(SOLDDataset):
         return offensive_phrases
 
     @staticmethod
-    def categorize_offensive_phrases(phrases, pos_tagger):
+    def categorize_offensive_phrases_old(phrases, pos_tagger):
         categorized = {
             'noun_phrases': [],
             'verb_phrases': [],
@@ -223,6 +223,55 @@ class SOLDAugmentedDataset(SOLDDataset):
         categorized['mixed_phrases'] = list(dict.fromkeys(categorized['mixed_phrases']))
                 
         return categorized
+
+    @staticmethod
+    def categorize_offensive_phrases(phrases, pos_tagger):
+        categorized = {
+            'noun_modifiers': [],      # offensive words that can modify nouns
+            'verb_intensifiers': [],   # offensive words that can intensify verbs
+            'interjections': [],       # standalone offensive expressions
+            'offensive_nouns': [],     # offensive nouns for replacement
+            'mixed_phrases': []        # phrases that don't fit other categories
+        }
+        
+        for phrase in phrases:
+            tokens = phrase.split()
+            pos_tags = pos_tagger.predict([tokens])[0]
+            
+            # Single token classifications
+            if len(pos_tags) == 1:
+                tag = pos_tags[0][1]
+                word = pos_tags[0][0]
+                
+                if tag.startswith('N'):
+                    categorized['offensive_nouns'].append(word)
+                elif tag.startswith('UH') or tag == 'FS':  # Interjections and standalone expressions
+                    categorized['interjections'].append(word)
+            
+            # Multi-token classifications
+            else:
+                # Check the pattern of POS tags
+                first_tag = pos_tags[0][1]
+                last_tag = pos_tags[-1][1]
+                
+                phrase_text = ' '.join(token[0] for token in pos_tags)
+                
+                if first_tag.startswith('JJ') or first_tag.startswith('RB'):
+                    # Modifiers that can come before nouns
+                    categorized['noun_modifiers'].append(phrase_text)
+                elif last_tag.startswith('RB') or last_tag.startswith('JJ'):
+                    # Intensifiers that can come after verbs
+                    categorized['verb_intensifiers'].append(phrase_text)
+                else:
+                    categorized['mixed_phrases'].append(phrase_text)
+
+        # Remove duplicates while preserving order
+        for category in categorized:
+            categorized[category] = list(dict.fromkeys(categorized[category]))
+                    
+        return categorized
+
+
 
     def save_category_phrases(self):
         file_save_path = os.path.join(self.output_dir, 'offensive_phrases.json')
