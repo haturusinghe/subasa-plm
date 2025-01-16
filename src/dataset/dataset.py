@@ -380,45 +380,62 @@ class SOLDAugmentedDataset(SOLDDataset):
         return categorized
 
     @staticmethod
-    def categorize_offensive_phrases(phrases, pos_tagger):
+    def categorize_offensive_phrases(offensive_single_word_list_with_pos_tags, pos_tagger):
         categorized = {
-            'noun_modifiers': [],      # offensive words that can modify nouns
-            'verb_intensifiers': [],   # offensive words that can intensify verbs
-            'interjections': [],       # standalone offensive expressions
-            'offensive_nouns': [],     # offensive nouns for replacement
-            'mixed_phrases': []        # phrases that don't fit other categories
+            'noun_modifiers': [],      # words that modify nouns (adjectives, determiners)
+            'verb_intensifiers': [],   # words that intensify verbs (adverbs, particles)
+            'interjections': [],       # standalone expressions, exclamations
+            'offensive_nouns': [],     # offensive nouns for direct replacement
+            'offensive_verbs': [],     # offensive verbs for action replacement
+            'pronouns': [],           # offensive pronouns (තෝ, උඹ)
+            'particles': [],          # emphatic particles that add offensive tone
+            'adjectives': [],         # offensive adjectives
+            'adverbs': []            # offensive adverbs
         }
+
+
         
-        for phrase in phrases:
-            tokens = phrase.split()
-            pos_tags = pos_tagger.predict([tokens])[0]
+        for word,tag in offensive_single_word_list_with_pos_tags:
             
-            # Single token classifications
-            if len(pos_tags) == 1:
-                tag = pos_tags[0][1]
-                word = pos_tags[0][0]
+            # Comprehensive single token classification
+            if tag.startswith('N'):
+                categorized['offensive_nouns'].append(word)
+                # Nouns can also act as modifiers in Sinhala
+                if tag == 'NNC':
+                    categorized['noun_modifiers'].append(word)
+                    
+            elif tag.startswith('V'):
+                categorized['offensive_verbs'].append(word)
+                # Some verb forms can act as intensifiers
+                if tag in ['VNN', 'VNF']:
+                    categorized['verb_intensifiers'].append(word)
+                    
+            elif tag.startswith('J'):
+                categorized['adjectives'].append(word)
+                categorized['noun_modifiers'].append(word)
                 
-                if tag.startswith('N'):
-                    categorized['offensive_nouns'].append(word)
-                elif tag.startswith('UH') or tag == 'FS':  # Interjections and standalone expressions
-                    categorized['interjections'].append(word)
-            
-            # Multi-token classifications
-            else:
-                # Check the pattern of POS tags
-                first_tag = pos_tags[0][1]
-                last_tag = pos_tags[-1][1]
+            elif tag == 'RB':
+                categorized['adverbs'].append(word)
+                categorized['verb_intensifiers'].append(word)
                 
-                phrase_text = ' '.join(token[0] for token in pos_tags)
+            elif tag == 'DET' or tag == 'PRP':
+                categorized['pronouns'].append(word)
+                # Determiners and pronouns can modify nouns
+                categorized['noun_modifiers'].append(word)
                 
-                if first_tag.startswith('JJ') or first_tag.startswith('RB'):
-                    # Modifiers that can come before nouns
-                    categorized['noun_modifiers'].append(phrase_text)
-                elif last_tag.startswith('RB') or last_tag.startswith('JJ'):
-                    # Intensifiers that can come after verbs
-                    categorized['verb_intensifiers'].append(phrase_text)
-                else:
-                    categorized['mixed_phrases'].append(phrase_text)
+            elif tag in ['UH', 'FS', 'INJ']:
+                categorized['interjections'].append(word)
+                
+            elif tag == 'RP':
+                categorized['particles'].append(word)
+                # Particles can intensify both nouns and verbs
+                categorized['verb_intensifiers'].append(word)
+                categorized['noun_modifiers'].append(word)
+                
+            # Words that can serve multiple functions
+            if tag in ['JJ', 'RB', 'RP', 'UH']:
+                # These can often be used as standalone offensive expressions
+                categorized['interjections'].append(word)
 
         # Remove duplicates while preserving order
         for category in categorized:
