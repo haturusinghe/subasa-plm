@@ -220,12 +220,12 @@ class SOLDAugmentedDataset(SOLDDataset):
         for item in self.offensive_data_only:
             text_tokens = item['tokens'].split()
             raw_rationale_tokens = literal_eval(item['rationales'])
-            offensive_phrases = self.extract_offensive_phrases(
-                text_tokens, 
-                raw_rationale_tokens,
-                max_ngram=1
-            )
-            self.offensive_ngram_list.extend(offensive_phrases.keys())
+            # offensive_phrases = self.extract_offensive_phrases(
+            #     text_tokens, 
+            #     raw_rationale_tokens,
+            #     max_ngram=1
+            # )
+            # self.offensive_ngram_list.extend(offensive_phrases.keys())
 
     def _save_processed_data(self):
         """Save all processed data to JSON files."""
