@@ -12,10 +12,13 @@ import torch_optimizer as optim
 
 from transformers import XLMRobertaTokenizer, XLMRobertaModel, XLMRobertaConfig,XLMRobertaForTokenClassification, XLMRobertaForSequenceClassification
 
+from huggingface_hub import whoami
+
 from src.models.custom_models import XLMRobertaCustomForTCwMRP
 from src.utils.logging_utils import setup_logging
 
 from huggingface_hub import HfApi
+from huggingface_hub import login
 from huggingface_hub import ModelCard, ModelCardData
 
 def get_device():
@@ -97,6 +100,8 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
     else:
         file_name = f"{args.pretrained_model}_{args.finetuning_stage}_{intermediate_label}_val_loss_{metrics['val/loss']:.6f}_ep{metrics['epoch']}_stp{metrics['step']}_f1_{metrics['val/f1']:.6f}_{per_masked_f1_label}.ckpt"
 
+    #create directory if not exists
+    os.makedirs(os.path.join(args.dir_result, file_name), exist_ok=True)
 
     save_path = os.path.join(args.dir_result, file_name)
     trained_model.save_pretrained(save_directory=save_path)
@@ -155,12 +160,22 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
     
     # Push to Hugging Face Hub
     huggingface_repo_url = None
+    # Check if the HF_TOKEN environment variable is set
+    hf_token = os.getenv("HF_TOKEN")
+
+    if hf_token:
+        user = whoami(token=hf_token)
+    else:
+        print("No Hugging Face token found in environment variables. Please log in.")
+        login()
+
+
     if args.push_to_hub:
         try:
             now = datetime.now()
             time_now = (now.strftime('%d%m%Y-%H%M'))
             if args.short_name:
-                repo_name = f"{args.exp_name}-ep{metrics['epoch']}"
+                repo_name = f"{args.exp_name}_ep{metrics['epoch']}"
             else:
                 repo_name = f"{args.pretrained_model}-{args.finetuning_stage}-{intermediate_label}{time_now}-{args.seed}"
 
