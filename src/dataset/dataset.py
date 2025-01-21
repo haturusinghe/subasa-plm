@@ -406,10 +406,11 @@ class SOLDAugmentedDataset(SOLDDataset):
     ) -> Tuple[List[str], Set[int], int]:
         t1, t2, t3 = trigram
         count_inserted = 0
-        if t1[1] == "NNC" and t2[1] == "NNC":
-            # Select random offensive noun from NNC category
+        
+        # Pattern: NNC -> NNC -> NNC
+        if all(t[1] == "NNC" for t in [t1, t2, t3]):
             offensive_noun = random.choice(list(offensive_lexicon['NNC'].keys()))
-            modified_tokens.insert(i+1, offensive_noun)
+            modified_tokens.insert(i+1, offensive_noun)  # Insert between first two nouns
             inserted_positions.add(i+1)
             count_inserted += 1
         return modified_tokens, inserted_positions, count_inserted
@@ -425,10 +426,19 @@ class SOLDAugmentedDataset(SOLDDataset):
     ) -> Tuple[List[str], Set[int], int]:
         t1, t2, t3 = trigram
         count_inserted = 0
-        if (t1[1] == "NNC" and t2[1] == "JJ" and t3[1] == "NNC") or \
-        (t1[1] == "JJ" and t2[1] == "JJ" and t3[1] == "NNC"):
-            modified_tokens[i+1] = random.choice(list(offensive_lexicon['JJ'].keys()))
-            inserted_positions.add(i+1)
+        
+        # Pattern: NNC -> JJ -> NNC or JJ -> JJ -> NNC
+        if ((t1[1] == "NNC" and t2[1] == "JJ" and t3[1] == "NNC") or
+            (t1[1] == "JJ" and t2[1] == "JJ" and t3[1] == "NNC")):
+            offensive_adj = random.choice(list(offensive_lexicon['JJ'].keys()))
+            if t1[1] == "JJ" and t2[1] == "JJ":
+                # Insert between consecutive adjectives
+                modified_tokens.insert(i+1, offensive_adj)
+                inserted_positions.add(i+1)
+            else:
+                # Replace existing adjective
+                modified_tokens[i+1] = offensive_adj
+                inserted_positions.add(i+1)
             count_inserted += 1
         return modified_tokens, inserted_positions, count_inserted
 
@@ -443,28 +453,17 @@ class SOLDAugmentedDataset(SOLDDataset):
     ) -> Tuple[List[str], Set[int], int]:
         t1, t2, t3 = trigram
         count_inserted = 0
-        if (t1[1] == "NNC" and t2[1] == "VP" and t3[1] == "NNC") or \
-        (t1[1] == "NNC" and t2[1] == "NNC" and t3[1] == "VP"):
-            modified_tokens[i+2] = random.choice(list(offensive_lexicon['VP'].keys()))
-            inserted_positions.add(i+2)
-            count_inserted += 1
-        return modified_tokens, inserted_positions, count_inserted
-
-    def _handle_proper_noun_modification(
-        self, 
-        tokens: List[str], 
-        trigram: Tuple[Tuple[str, str], ...], 
-        i: int,
-        modified_tokens: List[str],
-        inserted_positions: Set[int],
-        offensive_lexicon: Dict
-    ) -> Tuple[List[str], Set[int], int]:
-        t1, t2, t3 = trigram
-        count_inserted = 0
-        if t1[1] == "NNP" and t2[1] == "NNP" and t3[1] == "NNP":
-            offensive_noun = random.choice(list(offensive_lexicon['NNP'].keys()))
-            modified_tokens.insert(i+1, offensive_noun)
-            inserted_positions.add(i+1)
+        
+        # Patterns: NNC -> VP -> NNC or NNC -> NNC -> VP
+        if ((t1[1] == "NNC" and t2[1] == "VP" and t3[1] == "NNC") or
+            (t1[1] == "NNC" and t2[1] == "NNC" and t3[1] == "VP")):
+            offensive_verb = random.choice(list(offensive_lexicon['VP'].keys()))
+            if t2[1] == "VP":
+                modified_tokens[i+1] = offensive_verb
+                inserted_positions.add(i+1)
+            else:
+                modified_tokens.insert(i+2, offensive_verb)
+                inserted_positions.add(i+2)
             count_inserted += 1
         return modified_tokens, inserted_positions, count_inserted
 
@@ -479,14 +478,41 @@ class SOLDAugmentedDataset(SOLDDataset):
     ) -> Tuple[List[str], Set[int], int]:
         t1, t2, t3 = trigram
         count_inserted = 0
+        
+        # Pattern: JJ -> NNC -> VP
         if t1[1] == "JJ" and t2[1] == "NNC" and t3[1] == "VP":
-            # Replace both adjective and verb
-            modified_tokens[i] = random.choice(list(offensive_lexicon['JJ'].keys()))
-            modified_tokens[i+2] = random.choice(list(offensive_lexicon['VP'].keys()))
-            inserted_positions.update([i, i+2])
+            # Replace adjective
+            offensive_adj = random.choice(list(offensive_lexicon['JJ'].keys()))
+            modified_tokens[i] = offensive_adj
+            inserted_positions.add(i)
+            
+            # Replace verb
+            offensive_verb = random.choice(list(offensive_lexicon['VP'].keys()))
+            modified_tokens[i+2] = offensive_verb
+            inserted_positions.add(i+2)
+            
             count_inserted += 2
         return modified_tokens, inserted_positions, count_inserted
 
+    def _handle_proper_noun_modification(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
+        
+        # Pattern: NNP -> NNP -> NNP
+        if all(t[1] == "NNP" for t in [t1, t2, t3]):
+            offensive_noun = random.choice(list(offensive_lexicon['NNP'].keys()))
+            modified_tokens.insert(i+1, offensive_noun)
+            inserted_positions.add(i+1)
+            count_inserted += 1
+        return modified_tokens, inserted_positions, count_inserted
 
 
 
