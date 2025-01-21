@@ -196,7 +196,6 @@ class SOLDAugmentedDataset(SOLDDataset):
         """Extract and categorize offensive phrases."""
         self._extract_offensive_ngrams()
         self.offensive_ngram_list = list(dict.fromkeys(self.offensive_ngram_list))
-        self.offensive_single_word_list_with_pos_tags = self.remove_duplicates(self.offensive_single_word_list_with_pos_tags)
         self.categoried_offensive_phrases = self.categorize_offensive_phrases(
             self.offensive_single_word_list_with_pos_tags, # self.offensive_word_list, 
         )
@@ -290,81 +289,6 @@ class SOLDAugmentedDataset(SOLDDataset):
         self.logger.info(f"[AUGMENTED] [FINAL_DATASET_LEN] {len(self.dataset)}")
 
         self._save_augmented_data()
-
-    def offensive_token_insertion_older(self, tokens, pos_tags):
-        """
-        Insert offensive tokens into a non-offensive sentence based on POS patterns.
-        Returns modified tokens or None if no valid insertions possible.
-        """
-        if not tokens or not pos_tags:
-            return None
-            
-        modified_tokens = tokens.copy()
-        offensive_lexicon = self.categoried_offensive_phrases
-        inserted_positions = set()
-        count_of_inserted = 0
-        
-        # Define insertion probabilities
-        NOUN_MODIFIER_PROB = 0.5
-        VERB_INTENSIFIER_PROB = 0.3
-        INTERJECTION_PROB = 0.2
-        MAX_NEW_PHRASES_ALLOWED = 3
-        
-        for i, (token, tag) in enumerate(pos_tags):
-
-            if count_of_inserted >= MAX_NEW_PHRASES_ALLOWED:
-                break
-
-            if i in inserted_positions:
-                continue
-                
-            if tag.startswith('NN') and offensive_lexicon['noun_modifiers']:
-                if random.random() < NOUN_MODIFIER_PROB:
-                    offensive_modifier = random.choice(offensive_lexicon['noun_modifiers'])
-                    modified_tokens.insert(i, offensive_modifier)
-                    inserted_positions.add(i)
-                    count_of_inserted += 1
-                    
-            elif tag.startswith('VB') and offensive_lexicon['verb_intensifiers']:
-                if random.random() < VERB_INTENSIFIER_PROB:
-                    offensive_intensifier = random.choice(offensive_lexicon['verb_intensifiers'])
-                    modified_tokens.insert(i + 1, offensive_intensifier)
-                    inserted_positions.add(i + 1)
-                    count_of_inserted += 1
-        
-        if count_of_inserted <= MAX_NEW_PHRASES_ALLOWED:
-            if random.random() < INTERJECTION_PROB and offensive_lexicon['interjections']:
-                if random.choice([True, False]):
-                    modified_tokens.insert(0, random.choice(offensive_lexicon['interjections']))
-                    # if 0 is already in the inserted_positions, make it 1
-                    if 0 in inserted_positions:
-                        inserted_positions.add(1)
-
-                    inserted_positions.add(0)
-                else:
-                    modified_tokens.append(random.choice(offensive_lexicon['interjections']))
-                    inserted_positions.add(len(modified_tokens) - 1)
-        
-        pre_modified_tokens = modified_tokens.copy()
-        raw_rationale_tokens = [0] * len(pre_modified_tokens)
-        after_modification_rationale_tokens = []
-
-        for i, (token, rationale_token) in enumerate(zip(pre_modified_tokens, raw_rationale_tokens)):
-            if i in inserted_positions:
-                if len(token.split()) > 1:
-                    rationale_token = [1] * len(token.split())
-                else:
-                    rationale_token = [1]
-            else:
-                rationale_token = [0]
-            after_modification_rationale_tokens.extend(rationale_token)
-        
-        new_setence = ' '.join(pre_modified_tokens)
-
-        if new_setence.split() == tokens:
-            return None, None
-        
-        return pre_modified_tokens, after_modification_rationale_tokens
 
     @staticmethod
     def categorize_offensive_phrases(offensive_single_word_list_with_pos_tags):
