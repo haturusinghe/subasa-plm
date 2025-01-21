@@ -66,8 +66,6 @@ class SOLDDataset(Dataset):
             for j in rm_idxs:
                 removed_items.append(self.dataset[j])
                 del self.dataset[j]
-            self.logger.info(f"[DATASET] [MODE: {mode}] [SKIP_EMPTY_RAT] Removed {len(removed_items)} items")
-            self.logger.info(f"[DATASET] [MODE: {mode}] [REMOVED_ITEMS] {str(removed_items)}")
         
         self.mode = mode
         self.intermediate = args.intermediate
@@ -125,29 +123,48 @@ class SOLDDataset(Dataset):
             return ()
 
 
+from typing import List, Dict, Set, Tuple, Optional
+from pathlib import Path
+
 class SOLDAugmentedDataset(SOLDDataset):
+    # Configuration constants
+    MAX_NEW_PHRASES_ALLOWED = 3
+    MAX_NEW_SENTENCES_GENERATED = 5
+    AUGMENTATION_STRATEGIES = [
+        "Noun-Based Insertions",
+        "Adjective Replacement",
+        "Verb Modification",
+        "Proper Noun Modification",
+        "Hybrid Approach",
+        "Insert for PUNC",
+        "Compound Verb Modification",
+        "Extended Verb Patterns",
+        "Case Marker Insertion",
+        "Proper Noun Punctuation"
+    ]
+
+
     def __init__(self, args, mode='train', tokenizer=None):
         super().__init__(args, mode, tokenizer)
-        self.output_dir = "json_dump"
+        self.output_dir = Path("json_dump")
+        self.output_dir.mkdir(exist_ok=True)
         self.initialize_data_structures()
         self.load_and_process_data()
         self.process_offensive_words()
         self.generate_augmented_data()
 
-    def initialize_data_structures(self):
+    def initialize_data_structures(self) -> None:
         """Initialize all data structures used by the class."""
-        self.offensive_data_only = []
-        self.non_offensive_data_only = []
-        self.offensive_word_list = []
-        self.categoried_offensive_phrases = {}
-        self.augmented_data = []
-        self.non_offensive_data_selected = []
-        self.offensive_data_with_pos_tags = []
-        self.non_offensive_data_with_pos_tags = []
+        self.offensive_data_only: List[Dict] = []
+        self.non_offensive_data_only: List[Dict] = []
+        self.offensive_ngram_list: List[str] = []
+        self.categoried_offensive_phrases: Dict = {}
+        self.augmented_data: List[Dict] = []
+        self.non_offensive_data_selected: List[Dict] = []
+        self.offensive_data_with_pos_tags: List[List[Tuple[str, str]]] = []
+        self.non_offensive_data_with_pos_tags: List[List[Tuple[str, str]]] = []
         self.pos_tagger = POSTagger()
-        self.final_non_offensive_data = []
-        self.final_offensive_data = []
-        self.offensive_single_word_list_with_pos_tags = []
+        self.offensive_single_word_list_with_pos_tags: List[Tuple[str, str]] = []
 
     def load_and_process_data(self):
         """Load and separate offensive and non-offensive data."""
@@ -180,25 +197,28 @@ class SOLDAugmentedDataset(SOLDDataset):
 
     def process_offensive_words(self):
         """Extract and categorize offensive phrases."""
-        self._extract_offensive_words()
-        self.offensive_word_list = list(dict.fromkeys(self.offensive_word_list))
-        self.offensive_single_word_list_with_pos_tags = self.remove_duplicates(self.offensive_single_word_list_with_pos_tags)
+        self._extract_offensive_ngrams()
+        self.offensive_ngram_list = list(dict.fromkeys(self.offensive_ngram_list))
         self.categoried_offensive_phrases = self.categorize_offensive_phrases(
             self.offensive_single_word_list_with_pos_tags, # self.offensive_word_list, 
-            self.pos_tagger
         )
+        self.categoried_offensive_phrases = self.filter_low_count_words(self.categoried_offensive_phrases)
         self._save_processed_data()
+    
+    @staticmethod
+    def filter_low_count_words(pos_dict):
+        """Remove words with count < 2 from POS dictionary"""
 
-    def _extract_offensive_words(self):
-        """Extract offensive phrases from the dataset."""
-        for item in self.offensive_data_only:
-            text_tokens = item['tokens'].split()
-            raw_rationale_tokens = literal_eval(item['rationales'])
-            offensive_phrases = self.extract_offensive_phrases(
-                text_tokens, 
-                raw_rationale_tokens
-            )
-            self.offensive_word_list.extend(offensive_phrases.keys())
+        filtered_data = {
+            outer_key: {inner_key: freq for inner_key, freq in inner_dict.items() if freq >= 2}
+            for outer_key, inner_dict in pos_dict.items()
+        }
+
+        return filtered_data
+
+    def _extract_offensive_ngrams(self):
+        # TODO: Implement this method if needed
+        pass
 
     def _save_processed_data(self):
         """Save all processed data to JSON files."""
@@ -229,27 +249,27 @@ class SOLDAugmentedDataset(SOLDDataset):
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=1)
         
-
-
     def generate_augmented_data(self):
         """Generate augmented offensive data from non-offensive sentences."""
         for item in self.non_offensive_data_only[:]:  # Create a copy to iterate
             text_tokens = item['tokens'].split()
             pos_tags = self.pos_tagger.predict([text_tokens])[0]
             
-            augmented_tokens, augmented_rationale = self.offensive_token_insertion(text_tokens, pos_tags)
-            if augmented_tokens and augmented_rationale:
-                augmented_sentence = ' '.join(augmented_tokens)
-            
-                new_item = {
-                    'post_id': f"{item['post_id']}_aug",
-                    'text': augmented_sentence,
-                    'tokens': augmented_sentence,
-                    'rationales': str(augmented_rationale),
-                    'label': 'OFF',
-                }
-                self.augmented_data.append(new_item)
-                self.non_offensive_data_selected.append(item)
+            augmented_tokens_list, augmented_rationale_list = self.offensive_token_insertion(text_tokens, pos_tags)
+
+            for augmented_tokens, augmented_rationale in zip(augmented_tokens_list, augmented_rationale_list):
+                if augmented_tokens and augmented_rationale:
+                    augmented_sentence = ' '.join(augmented_tokens)
+                
+                    new_item = {
+                        'post_id': f"{item['post_id']}_aug",
+                        'text': augmented_sentence,
+                        'tokens': augmented_sentence,
+                        'rationales': str(augmented_rationale),
+                        'label': 'OFF',
+                    }
+                    self.augmented_data.append(new_item)
+                    self.non_offensive_data_selected.append(item)
         
         # make copy of the augmented data and extend it with non_offensive_data_selected to create the final dataset
         copy_of_augmented_data = copy.deepcopy(self.augmented_data)
@@ -264,252 +284,410 @@ class SOLDAugmentedDataset(SOLDDataset):
 
         self._save_augmented_data()
 
-    def offensive_token_insertion(self, tokens, pos_tags):
+    @staticmethod
+    def categorize_offensive_phrases(offensive_single_word_list_with_pos_tags):
         """
-        Insert offensive tokens into a non-offensive sentence based on POS patterns.
-        Returns modified tokens or None if no valid insertions possible.
+            POS Tag and Meaning:
+
+            NNC - Common Noun  
+            NNP - Proper Noun  
+            PRP - Pronoun  
+            QUE - Questioning Pronoun  
+            NDT - Deterministic Pronoun  
+            QBE - Question Based Pronoun  
+            VFM - Verb Finite  
+            VP - Verb Particle  
+            VNN - Verbal Noun  
+            AUX - Modal Auxiliary  
+            VNF - Verb Non Finite  
+            NCV - Noun in Compound Verb  
+            JCV - Adjective in Compound Verb  
+            RRPCV - Particle in Compound Verb  
+            JJ - Adjective  
+            NNJ - Adjectival Noun  
+            RB - Adverbs  
+            POST - Postposition  
+            CC - Conjunction  
+            RP - Particle  
+            DET - Determiner  
+            CM - Case Maker  
+            NVB - Noun in Sentence Ending  
+            NUM - Number  
+            ABB - Abbreviation  
+            FS - Full Stop  
+            PUNC - Punctuation  
+            FRW - Foreign Word  
+            UNK - Undefined
+
         """
+
+        categorized = {}
+        # Initialize the structure with an empty dict for each tag we encounter
+        for _, tag in offensive_single_word_list_with_pos_tags:
+            if tag not in categorized:
+                categorized[tag] = {}
+
+        # Count occurrences of each word for each POS tag
+        for word, tag in offensive_single_word_list_with_pos_tags:
+            if word not in categorized[tag]:
+                categorized[tag][word] = 0
+            categorized[tag][word] += 1
+            
+        return categorized
+
+    def offensive_token_insertion(
+        self, 
+        tokens: List[str], 
+        pos_tags: List[Tuple[str, str]]
+    ) -> Tuple[List[str], List[int]]:
+        """Generate augmented offensive sentences using various strategies."""
         if not tokens or not pos_tags:
-            return None
-            
-        modified_tokens = tokens.copy()
-        offensive_lexicon = self.categoried_offensive_phrases
-        inserted_positions = set()
-        count_of_inserted = 0
-        
-        # Define insertion probabilities
-        NOUN_MODIFIER_PROB = 0.5
-        VERB_INTENSIFIER_PROB = 0.3
-        INTERJECTION_PROB = 0.2
-        MAX_NEW_PHRASES_ALLOWED = 3
-        
-        for i, (token, tag) in enumerate(pos_tags):
+            return [], []
 
-            if count_of_inserted >= MAX_NEW_PHRASES_ALLOWED:
+        new_offensive_sentences_tokens = []
+        new_offensive_sentences_rationale = []
+        failed_strategies: Set[str] = set()
+        
+        while len(new_offensive_sentences_tokens) < self.MAX_NEW_SENTENCES_GENERATED:
+            modified_tokens = tokens.copy()
+            inserted_positions: Set[int] = set()
+            count_inserted = 0
+            
+            available_strategies = [s for s in self.AUGMENTATION_STRATEGIES if s not in failed_strategies]
+            if not available_strategies:
                 break
-
-            if i in inserted_positions:
-                continue
                 
-            if tag.startswith('NN') and offensive_lexicon['noun_modifiers']:
-                if random.random() < NOUN_MODIFIER_PROB:
-                    offensive_modifier = random.choice(offensive_lexicon['noun_modifiers'])
-                    modified_tokens.insert(i, offensive_modifier)
-                    inserted_positions.add(i)
-                    count_of_inserted += 1
+            strategy = random.choice(available_strategies)
+            trigrams = list(zip(pos_tags[:-2], pos_tags[1:-1], pos_tags[2:]))
+            trigrams = trigrams
+
+            for i, trigram in enumerate(trigrams):
+                if count_inserted >= self.MAX_NEW_PHRASES_ALLOWED:
+                    break
                     
-            elif tag.startswith('VB') and offensive_lexicon['verb_intensifiers']:
-                if random.random() < VERB_INTENSIFIER_PROB:
-                    offensive_intensifier = random.choice(offensive_lexicon['verb_intensifiers'])
-                    modified_tokens.insert(i + 1, offensive_intensifier)
-                    inserted_positions.add(i + 1)
-                    count_of_inserted += 1
-        
-        if count_of_inserted <= MAX_NEW_PHRASES_ALLOWED:
-            if random.random() < INTERJECTION_PROB and offensive_lexicon['interjections']:
-                if random.choice([True, False]):
-                    modified_tokens.insert(0, random.choice(offensive_lexicon['interjections']))
-                    # if 0 is already in the inserted_positions, make it 1
-                    if 0 in inserted_positions:
-                        inserted_positions.add(1)
+                modified_tokens, inserted_positions, new_count = self._apply_augmentation_strategy(
+                    strategy, tokens, trigram, i, modified_tokens, 
+                    inserted_positions, self.categoried_offensive_phrases
+                )
+                count_inserted += new_count
 
-                    inserted_positions.add(0)
-                else:
-                    modified_tokens.append(random.choice(offensive_lexicon['interjections']))
-                    inserted_positions.add(len(modified_tokens) - 1)
-        
-        pre_modified_tokens = modified_tokens.copy()
-        raw_rationale_tokens = [0] * len(pre_modified_tokens)
-        after_modification_rationale_tokens = []
+            rationale = self._generate_rationale(modified_tokens, inserted_positions)
+            new_sentence = ' '.join(modified_tokens)
 
-        for i, (token, rationale_token) in enumerate(zip(pre_modified_tokens, raw_rationale_tokens)):
-            if i in inserted_positions:
-                if len(token.split()) > 1:
-                    rationale_token = [1] * len(token.split())
-                else:
-                    rationale_token = [1]
+            if new_sentence.split() != tokens:
+                new_offensive_sentences_tokens.append(new_sentence.split())
+                new_offensive_sentences_rationale.append(rationale)
             else:
-                rationale_token = [0]
-            after_modification_rationale_tokens.extend(rationale_token)
-        
-        new_setence = ' '.join(pre_modified_tokens)
-
-        if new_setence.split() == tokens:
-            return None, None
-        
-        return pre_modified_tokens, after_modification_rationale_tokens
-
-    @staticmethod
-    def extract_offensive_phrases(tokens, rationales, max_ngram=1):
-
-        offensive_phrases = {}
-
-        # Find consecutive offensive tokens
-        for n in range(1, max_ngram + 1):
-            for i in range(len(tokens) - n + 1):
-                # Check if all tokens in this window are marked offensive
-                rat_portion = rationales[i:i+n]
-                str_portion = tokens[i:i+n]
-                if all(rat_portion):
-                    phrase = ' '.join(str_portion)
-                    if phrase not in offensive_phrases:
-                        offensive_phrases[phrase] = 1
-                    else:
-                        offensive_phrases[phrase] += 1
-                        
-        return offensive_phrases
-
-    @staticmethod
-    def categorize_offensive_phrases_old(phrases, pos_tagger):
-        categorized = {
-            'noun_phrases': [],
-            'verb_phrases': [],
-            'adjective_phrases': [],
-            'mixed_phrases': []
-        }
-        
-        for phrase in phrases:
-            tokens = phrase.split()
-            pos_tags = pos_tagger.predict([tokens])[0]
+                failed_strategies.add(strategy)
             
-            # Determine phrase type based on POS pattern
-            if all(tag[1].startswith('N') for tag in pos_tags):
-                categorized['noun_phrases'].append(tuple(pos_tags))
-            elif all(tag[1].startswith('V') for tag in pos_tags):
-                categorized['verb_phrases'].append(tuple(pos_tags))
-            elif all(tag[1].startswith('J') for tag in pos_tags):
-                categorized['adjective_phrases'].append(tuple(pos_tags))
-            else:
-                categorized['mixed_phrases'].append(tuple(pos_tags))
+        return new_offensive_sentences_tokens, new_offensive_sentences_rationale
 
-        categorized['noun_phrases'] = list(dict.fromkeys(categorized['noun_phrases']))
-        categorized['verb_phrases'] = list(dict.fromkeys(categorized['verb_phrases']))
-        categorized['adjective_phrases'] = list(dict.fromkeys(categorized['adjective_phrases']))
-        categorized['mixed_phrases'] = list(dict.fromkeys(categorized['mixed_phrases']))
-                
-        return categorized
-
-    @staticmethod
-    def categorize_offensive_phrases(offensive_single_word_list_with_pos_tags, pos_tagger):
-        categorized = {
-            'noun_modifiers': [],      # words that modify nouns (adjectives, determiners)
-            'verb_intensifiers': [],   # words that intensify verbs (adverbs, particles)
-            'interjections': [],       # standalone expressions, exclamations
-            'offensive_nouns': [],     # offensive nouns for direct replacement
-            'offensive_verbs': [],     # offensive verbs for action replacement
-            'pronouns': [],           # offensive pronouns (තෝ, උඹ)
-            'particles': [],          # emphatic particles that add offensive tone
-            'adjectives': [],         # offensive adjectives
-            'adverbs': []            # offensive adverbs
-        }
-
-
-        
-        for word,tag in offensive_single_word_list_with_pos_tags:
-            
-            # Comprehensive single token classification
-            if tag.startswith('N'):
-                categorized['offensive_nouns'].append(word)
-                # Nouns can also act as modifiers in Sinhala
-                if tag == 'NNC':
-                    categorized['noun_modifiers'].append(word)
-                    
-            elif tag.startswith('V'):
-                categorized['offensive_verbs'].append(word)
-                # Some verb forms can act as intensifiers
-                if tag in ['VNN', 'VNF']:
-                    categorized['verb_intensifiers'].append(word)
-                    
-            elif tag.startswith('J'):
-                categorized['adjectives'].append(word)
-                categorized['noun_modifiers'].append(word)
-                
-            elif tag == 'RB':
-                categorized['adverbs'].append(word)
-                categorized['verb_intensifiers'].append(word)
-                
-            elif tag == 'DET' or tag == 'PRP':
-                categorized['pronouns'].append(word)
-                # Determiners and pronouns can modify nouns
-                categorized['noun_modifiers'].append(word)
-                
-            elif tag in ['UH', 'FS', 'INJ']:
-                categorized['interjections'].append(word)
-                
-            elif tag == 'RP':
-                categorized['particles'].append(word)
-                # Particles can intensify both nouns and verbs
-                categorized['verb_intensifiers'].append(word)
-                categorized['noun_modifiers'].append(word)
-                
-            # Words that can serve multiple functions
-            if tag in ['JJ', 'RB', 'RP', 'UH']:
-                # These can often be used as standalone offensive expressions
-                categorized['interjections'].append(word)
-
-        # Remove duplicates while preserving order
-        for category in categorized:
-            categorized[category] = list(dict.fromkeys(categorized[category]))
-            
-        return categorized
-
-
-
-
-    def offensive_token_insertion_old(self, tokens, pos_tags):
-        """
-        Insert offensive tokens into a non-offensive sentence based on POS patterns
-        
-        Args:
-            tokens: List of original sentence tokens
-            pos_tags: List of POS tags for each token [(word1, tag1), (word2, tag2),...]
-            offensive_lexicon: Dictionary with categories of offensive words
-                {
-                    'noun_modifiers': [...],  # offensive words that can modify nouns
-                    'verb_intensifiers': [...],  # offensive words that can intensify verbs
-                    'interjections': [...],  # standalone offensive expressions
-                    'offensive_nouns': [...],  # offensive nouns for replacement
-                }
-        """
-        import random
-        modified_tokens = tokens.copy()
-        offensive_lexicon = self.categoried_offensive_phrases
-        
-        # Track insertion positions to avoid multiple insertions at same spot
-        inserted_positions = set()
-        
-        # Iterate through tokens and their POS tags
-        for i, (token, tag) in enumerate(pos_tags):
-            # Skip if we already inserted at this position
+    def _generate_rationale(
+        self, 
+        tokens: List[str], 
+        inserted_positions: Set[int]
+    ) -> List[int]:
+        """Generate rationale tokens for the augmented sentence."""
+        rationale = []
+        for i, token in enumerate(tokens):
             if i in inserted_positions:
-                continue
-                
-            # Case 1: Insert before nouns
-            if tag[1].startswith('NN'):
-                if random.random() < 0.5:  # 50% chance to insert
-                    offensive_modifier = random.choice(offensive_lexicon['noun_modifiers'])
-                    modified_tokens.insert(i, offensive_modifier)
-                    inserted_positions.add(i)
-                    
-            # Case 2: Insert after verbs
-            elif tag[1].startswith('VB'):
-                if random.random() < 0.3:  # 30% chance to insert
-                    offensive_intensifier = random.choice(offensive_lexicon['verb_intensifiers'])
-                    modified_tokens.insert(i + 1, offensive_intensifier)
-                    inserted_positions.add(i + 1)
-        
-        # Case 3: Add interjection at the beginning or end (20% chance)
-        if random.random() < 0.2:
-            if random.choice([True, False]):  # randomly choose start or end
-                modified_tokens.insert(0, random.choice(offensive_lexicon['interjections']))
+                rationale.extend([1] * len(token.split()))
             else:
-                modified_tokens.append(random.choice(offensive_lexicon['interjections']))
+                rationale.append(0)
+        return rationale
+
+    def _apply_augmentation_strategy(
+        self, 
+        strategy: str, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        """Apply a specific augmentation strategy and return modified data."""
+        count_inserted = 0
+        t1, t2, t3 = trigram
+
+        strategy_handlers = {
+    "Noun-Based Insertions": self._handle_noun_insertions,
+    "Adjective Replacement": self._handle_adjective_replacement,
+    "Verb Modification": self._handle_verb_modification,
+    "Proper Noun Modification": self._handle_proper_noun_modification,
+    "Hybrid Approach": self._handle_hybrid_approach,
+    "Insert for PUNC": self._handle_punctuation_noun_pattern,
+    "Compound Verb Modification": self._handle_compound_verb_modification,
+    "Extended Verb Patterns": self._handle_verb_patterns,
+    "Case Marker Insertion": self._handle_case_marker_insertion,
+    "Proper Noun Punctuation": self.handle_proper_noun_punctuation
+}
+
+
+        if strategy in strategy_handlers:
+            modified_tokens, inserted_positions, count_inserted = strategy_handlers[strategy](
+                tokens, trigram, i, modified_tokens, inserted_positions, offensive_lexicon
+            )
+
+        return modified_tokens, inserted_positions, count_inserted
+
+    def _handle_noun_insertions(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
         
-        return modified_tokens
+        # Pattern: NNC -> NNC -> NNC
+        if all(t[1] == "NNC" for t in [t1, t2, t3]):
+            offensive_noun = random.choice(list(offensive_lexicon['NNC'].keys()))
+            modified_tokens.insert(i+1, offensive_noun)  # Insert between first two nouns
+            inserted_positions.add(i+1)
+            count_inserted += 1
+        return modified_tokens, inserted_positions, count_inserted
+
+    def _handle_adjective_replacement(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
+        
+        # Pattern: NNC -> JJ -> NNC or JJ -> JJ -> NNC
+        if ((t1[1] == "NNC" and t2[1] == "JJ" and t3[1] == "NNC") or
+            (t1[1] == "JJ" and t2[1] == "JJ" and t3[1] == "NNC")):
+            offensive_adj = random.choice(list(offensive_lexicon['JJ'].keys()))
+
+            if t1[1] == "JJ" and t2[1] == "JJ":
+                # Insert between consecutive adjectives
+                modified_tokens.insert(i+1, offensive_adj)
+                inserted_positions.add(i+1)
+            else:
+                # Replace existing adjective
+                modified_tokens[i+1] = offensive_adj
+                inserted_positions.add(i+1)
+            count_inserted += 1
+        return modified_tokens, inserted_positions, count_inserted
+
+    def _handle_verb_modification(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
+        
+        # Patterns: NNC -> VP -> NNC or NNC -> NNC -> VP
+        if ((t1[1] == "NNC" and t2[1] == "VP" and t3[1] == "NNC") or
+            (t1[1] == "NNC" and t2[1] == "NNC" and t3[1] == "VP")):
+            offensive_verb = random.choice(list(offensive_lexicon['VP'].keys()))
+
+            if t2[1] == "VP":
+                modified_tokens[i+1] = offensive_verb
+                inserted_positions.add(i+1)
+            else:
+                modified_tokens.insert(i+2, offensive_verb)
+                inserted_positions.add(i+2)
+            count_inserted += 1
+        return modified_tokens, inserted_positions, count_inserted
+
+    def _handle_hybrid_approach(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
+        
+        # Pattern: JJ -> NNC -> VP
+        if t1[1] == "JJ" and t2[1] == "NNC" and t3[1] == "VP":
+            # Replace adjective
+            offensive_adj = random.choice(list(offensive_lexicon['JJ'].keys()))
+            modified_tokens[i] = offensive_adj
+            inserted_positions.add(i)
+            
+            # Replace verb
+            offensive_verb = random.choice(list(offensive_lexicon['VP'].keys()))
+            modified_tokens[i+2] = offensive_verb
+            inserted_positions.add(i+2)
+            
+            count_inserted += 2
+        return modified_tokens, inserted_positions, count_inserted
+
+    def _handle_proper_noun_modification(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
+        
+        # Pattern: NNP -> NNP -> NNP
+        if all(t[1] == "NNP" for t in [t1, t2, t3]):
+            offensive_noun = random.choice(list(offensive_lexicon['NNP'].keys()))
+            modified_tokens.insert(i+1, offensive_noun)
+            inserted_positions.add(i+1)
+            count_inserted += 1
+        return modified_tokens, inserted_positions, count_inserted
     
-    @staticmethod
-    def remove_duplicates(list_of_pairs):
-        seen = {}
-        return list(dict.fromkeys(map(tuple, list_of_pairs)).keys())
+    def _handle_punctuation_noun_pattern(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
+        
+        # Pattern: PUNC -> NNC -> PUNC
+        if t1[1] == "PUNC" and t2[1] == "NNC" and t3[1] == "PUNC":
+            # Randomly decide between inserting before, after, or both with 1/3 probability each
+            choice = random.random()
+            
+            if choice < 1/3:
+                # Insert offensive adjective before noun
+                offensive_adj = random.choice(list(offensive_lexicon['JJ'].keys()))
+                modified_tokens.insert(i+1, offensive_adj)
+                inserted_positions.add(i+1)
+                count_inserted += 1
+            elif choice < 2/3:
+                # Insert offensive noun after existing noun
+                offensive_noun = random.choice(list(offensive_lexicon['NNC'].keys()))
+                modified_tokens.insert(i+2, offensive_noun)
+                inserted_positions.add(i+2)
+                count_inserted += 1
+            else:
+                # Insert both before and after
+                offensive_adj = random.choice(list(offensive_lexicon['JJ'].keys()))
+                offensive_noun = random.choice(list(offensive_lexicon['NNC'].keys()))
+                modified_tokens.insert(i+1, offensive_adj)
+                modified_tokens.insert(i+2, offensive_noun)
+                inserted_positions.add(i+1)
+                inserted_positions.add(i+2)
+                count_inserted += 2
+            
+        # Pattern: NPP -> NPP -> PUNC    
+        elif t1[1] == "NPP" and t2[1] == "NPP" and t3[1] == "PUNC":
+            choice = random.random()
+
+            if choice < 1/3:
+                # Insert offensive adjective before noun
+                offensive_adj = random.choice(list(offensive_lexicon['JJ'].keys()))
+                modified_tokens.insert(i+1, offensive_adj)
+                inserted_positions.add(i+1)
+                count_inserted += 1
+            elif choice < 2/3:
+                # Insert offensive noun after existing noun
+                offensive_noun = random.choice(list(offensive_lexicon['NNC'].keys()))
+                # j is random choice either 1 or 2
+                j = random.choice([1, 2])
+                modified_tokens.insert(i+j, offensive_noun)
+                inserted_positions.add(i+j)
+                count_inserted += 1
+            else:
+                # Insert both before and after
+                offensive_adj = random.choice(list(offensive_lexicon['JJ'].keys()))
+                offensive_noun = random.choice(list(offensive_lexicon['NNC'].keys()))
+                modified_tokens.insert(i+1, offensive_adj)
+                modified_tokens.insert(i+2, offensive_noun)
+                inserted_positions.add(i+1)
+                inserted_positions.add(i+2)
+                count_inserted += 2
+           
+         
+        return modified_tokens, inserted_positions, count_inserted
+
+    def _handle_compound_verb_modification(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
+        
+        # Pattern: NCV -> RRPCV or JCV -> RRPCV
+        if ((t1[1] == "NCV" and t2[1] == "RRPCV") or 
+            (t1[1] == "JCV" and t2[1] == "RRPCV")):
+            if t1[1] == "NCV" and 'NNC' in offensive_lexicon:
+                offensive_word = random.choice(list(offensive_lexicon['NNC'].keys()))
+            elif t1[1] == "JCV" and 'JJ' in offensive_lexicon:
+                offensive_word = random.choice(list(offensive_lexicon['JJ'].keys()))
+            modified_tokens[i] = offensive_word
+            inserted_positions.add(i)
+            count_inserted += 1
+        return modified_tokens, inserted_positions, count_inserted
+
+    def _handle_case_marker_insertion(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
+        
+        # Pattern: NNC -> CM or NNC -> POST
+        if t1[1] == "NNC" and (t2[1] == "CM" or t2[1] == "POST"):
+            if 'NNC' in offensive_lexicon:
+                offensive_noun = random.choice(list(offensive_lexicon['NNC'].keys()))
+                modified_tokens.insert(i+1, offensive_noun)
+                inserted_positions.add(i+1)
+                count_inserted += 1
+        return modified_tokens, inserted_positions, count_inserted
+
+    def handle_proper_noun_punctuation(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
+        
+        if t1[1] == "NNP" and t2[1] == "NNP" and t3[1] == "PUNC":
+            # Insert offensive adjective between proper nouns
+            if 'JJ' in offensive_lexicon:
+                offensive_adj = random.choice(list(offensive_lexicon['JJ'].keys()))
+                modified_tokens.insert(i+1, offensive_adj)
+                inserted_positions.add(i+1)
+                count_inserted += 1
+                
+        return modified_tokens, inserted_positions, count_inserted
+
 
 

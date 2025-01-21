@@ -12,10 +12,13 @@ import torch_optimizer as optim
 
 from transformers import XLMRobertaTokenizer, XLMRobertaModel, XLMRobertaConfig,XLMRobertaForTokenClassification, XLMRobertaForSequenceClassification
 
+from huggingface_hub import whoami
+
 from src.models.custom_models import XLMRobertaCustomForTCwMRP
 from src.utils.logging_utils import setup_logging
 
 from huggingface_hub import HfApi
+from huggingface_hub import login
 from huggingface_hub import ModelCard, ModelCardData
 
 def get_device():
@@ -91,7 +94,15 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
 
     intermediate_label = args.intermediate + "-" if args.intermediate != False else ''
     per_masked_f1_label = f"_masked_f1_{metrics['val/masked_f1']:.6f}" if 'val/masked_f1' in metrics else ''
-    file_name = f"{args.pretrained_model}_{args.finetuning_stage}_{intermediate_label}_val_loss_{metrics['val/loss']:.6f}_ep{metrics['epoch']}_stp{metrics['step']}_f1_{metrics['val/f1']:.6f}_{per_masked_f1_label}.ckpt"
+
+    if args.short_name:
+        file_name = f"ep{metrics['epoch']}.ckpt"
+    else:
+        file_name = f"{args.pretrained_model}_{args.finetuning_stage}_{intermediate_label}_val_loss_{metrics['val/loss']:.6f}_ep{metrics['epoch']}_stp{metrics['step']}_f1_{metrics['val/f1']:.6f}_{per_masked_f1_label}.ckpt"
+
+    #create directory if not exists
+    os.makedirs(os.path.join(args.dir_result, file_name), exist_ok=True)
+
     save_path = os.path.join(args.dir_result, file_name)
     trained_model.save_pretrained(save_directory=save_path)
     if tokenizer:
@@ -102,6 +113,22 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
     with open(metrics_file, 'w') as f:
         # Write main metrics
         f.write(f"Pre-Finetuned Model Checkpoint Path: {args.pre_finetuned_model}\n")
+        f.write(f"""Starting Arguments:
+            "learning_rate": {args.lr}
+            "epochs": {args.epochs}
+            "batch_size": {args.batch_size}
+            "model": {args.pretrained_model}
+            "intermediate_task": {args.intermediate}
+            "n_tk_label": {args.n_tk_label}
+            "mask_ratio": {args.mask_ratio}
+            "seed": {args.seed}
+            "dataset": {args.dataset}
+            "finetuning_stage": {args.finetuning_stage}
+            "val_int": {args.val_int}
+            "patience": {args.patience}
+            "skip_empty_rat": {args.skip_empty_rat}
+            """)
+         
         f.write(f"Validation Loss: {metrics['val/loss']:.6f}\n")
         f.write(f"Validation Accuracy: {metrics['val/accuracy']:.6f}\n")
         f.write(f"Validation F1: {metrics['val/f1']:.6f}\n")
@@ -123,7 +150,7 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
     if args.intermediate == 'mrp':
         # Save the embedding layer params
         emb_file_name = file_name + '_emb_layer_states.ckpt'
-        emb_save_path = os.path.join(args.dir_result, emb_file_name)
+        emb_save_path = os.path.join(save_path, emb_file_name)
         torch.save(embedding_layer.state_dict(), emb_save_path)
 
     args.waiting += 1
@@ -133,11 +160,24 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
     
     # Push to Hugging Face Hub
     huggingface_repo_url = None
+    # Check if the HF_TOKEN environment variable is set
+    hf_token = os.getenv("HF_TOKEN")
+
+    if hf_token:
+        user = whoami(token=hf_token)
+    else:
+        print("No Hugging Face token found in environment variables. Please log in.")
+        login()
+
+
     if args.push_to_hub:
         try:
             now = datetime.now()
             time_now = (now.strftime('%d%m%Y-%H%M'))
-            repo_name = f"{args.pretrained_model}-{args.finetuning_stage}-{intermediate_label}{time_now}-{args.seed}"
+            if args.short_name:
+                repo_name = f"{args.exp_name}_ep{metrics['epoch']}"
+            else:
+                repo_name = f"{args.pretrained_model}-{args.finetuning_stage}-{intermediate_label}{time_now}-{args.seed}"
 
             markdown_file_save_path = os.path.join(args.dir_result, file_name, 'README.md')
             with open(markdown_file_save_path, 'w') as f:
@@ -166,8 +206,22 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
                     f.write(f"Masked F1: {metrics['val/masked_f1']:.6f}\n\n")
                     f.write(f"#### Masked Classification Report\n\n")
                     f.write(f"{metrics['val/masked_classification_report']}\n\n")
-            
-           
+                
+                f.write(f"""### Trainer Arguments:
+                    "learning_rate": {args.lr}
+                    "epochs": {args.epochs}
+                    "batch_size": {args.batch_size}
+                    "model": {args.pretrained_model}
+                    "intermediate_task": {args.intermediate}
+                    "n_tk_label": {args.n_tk_label}
+                    "mask_ratio": {args.mask_ratio}
+                    "seed": {args.seed}
+                    "dataset": {args.dataset}
+                    "finetuning_stage": {args.finetuning_stage}
+                    "val_int": {args.val_int}
+                    "patience": {args.patience}
+                    "skip_empty_rat": {args.skip_empty_rat} """)
+         
             # Create model card
             card_data = ModelCardData(
                 language="en",
@@ -268,6 +322,9 @@ def setup_directories(args):
         exp_name = args.test_model_path.split('/')[-2]
         base_dir = os.path.join(args.finetuning_stage + "_finetune", exp_name)
         result_dir = os.path.join(base_dir, 'test')
+    elif args.exp_save_name:
+        exp_name = args.exp_save_name
+        result_dir = os.path.join(args.finetuning_stage + "_finetune", exp_name)
     else:
         exp_name = setup_experiment_name(args)
         result_dir = os.path.join(args.finetuning_stage + "_finetune", exp_name)

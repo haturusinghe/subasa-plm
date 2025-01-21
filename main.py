@@ -25,7 +25,7 @@ from transformers import (
 )
 
 # Local imports
-from src.dataset.dataset import SOLDDataset
+from src.dataset.dataset import SOLDAugmentedDataset, SOLDDataset
 from src.evaluate.evaluate import evaluate, evaluate_for_hatespeech
 from src.evaluate.lime import TestLime
 from src.models.custom_models import XLMRobertaCustomForTCwMRP
@@ -101,6 +101,15 @@ def parse_args():
     parser.add_argument('--explain_sold', default=False, help='Generate Explainablity Metrics', type=bool)
     parser.add_argument('--top_k', default=5, help='the top num of attention values to evaluate on explainable metrics')
     parser.add_argument('--lime_n_sample', default=100, help='the num of samples for lime explainer')
+
+    ## User given experiment name
+    parser.add_argument('--exp_save_name', type=str, default=None, help='an experiment name')
+
+    ## Use a shorter file name for model checkpoints
+    parser.add_argument('--short_name', default=False, help='use a shorter name for model checkpoints', type=bool)
+
+    #TEMP Skip arg for testing data augmentation
+    parser.add_argument('--skip', default=False, help='skip data augmentation', type=bool)
 
 
     return parser.parse_args()
@@ -368,7 +377,11 @@ def test_mrp(args):
         model = XLMRobertaCustomForTCwMRP.from_pretrained(args.test_model_path)
         hidden_size = model.config.hidden_size 
         emb_layer = nn.Embedding(args.n_tk_label, hidden_size)
-        loaded_state_dict = torch.load(args.test_model_path + '_emb_layer_states.ckpt')
+        emb_file_name  = args.test_model_path.split('/')[-1] + '_emb_layer_states.ckpt'
+        embedding_layer_path = os.path.join(args.test_model_path, emb_file_name)
+        loaded_state_dict = torch.load(embedding_layer_path)
+
+        
         emb_layer.load_state_dict(loaded_state_dict)
         model.config.output_attentions=True
 
@@ -589,29 +602,43 @@ def train_offensive_detection(args):
 
 
 def load_model_train(args):
+    print("\nLoading model and tokenizer for training...")
     tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
     tokenizer = add_tokens_to_tokenizer(args, tokenizer)
     model = XLMRobertaForSequenceClassification.from_pretrained(args.pretrained_model, num_labels=args.num_labels)
+    print(f"Loaded base model: {args.pretrained_model}")
 
+    print(f"\nLoading pre-finetuned model from: {args.pre_finetuned_model}")
     if 'mlm' in args.pre_finetuned_model:
+        print("Loading MLM pre-finetuned model...")
         pre_finetuned_model = XLMRobertaForMaskedLM.from_pretrained(args.pre_finetuned_model) 
     else:
+        print("Loading Token Classification pre-finetuned model...")
         pre_finetuned_model = XLMRobertaForTokenClassification.from_pretrained(args.pre_finetuned_model)
 
+    print("\nTransferring weights from pre-finetuned model...")
     model_state = model.state_dict()
     finetuned_state = pre_finetuned_model.state_dict()
 
+    print(f"Base model parameters: {len(model_state)}")
+    print(f"Pre-finetuned model parameters: {len(finetuned_state)}")
     
     # Initialize condition layer randomly 
     filtered_pretrained_state = {}
+    transferred = 0
     for (k1, v1), (k2, v2) in zip(model_state.items(), finetuned_state.items()):
         if v1.size() == v2.size():
             filtered_pretrained_state[k1] = v2
+            transferred += 1
         else:
             filtered_pretrained_state[k1] = v1
+            print(f"Size mismatch for {k1}, keeping original initialization")
 
     model_state.update(filtered_pretrained_state)
     model.load_state_dict(model_state, strict=True)
+
+    print(f"Successfully transferred {transferred} parameters")
+    print(f"Final model hidden size: {model.config.hidden_size}")
 
     args.hidden_size = model.config.hidden_size
 
@@ -721,6 +748,17 @@ def test_for_hate_speech(args):
         # get_explain_results(args)  # The test_res_explain.txt file will be written
 
 
+def test_aug(args):
+    train_dataset = SOLDAugmentedDataset(args, 'train')
+    val_dataset = SOLDAugmentedDataset(args, 'val')
+    test_dataset = SOLDAugmentedDataset(args, 'test')
+
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+
+
+
 if __name__ == '__main__':
     args = parse_args()
     args.device = get_device()
@@ -739,6 +777,12 @@ if __name__ == '__main__':
     # Setup experiment name and directories
     args.exp_name, args.dir_result = setup_directories(args)
     print("Checkpoint path: ", args.dir_result)
+
+    #TEMP - Skip data augmentation
+    if args.skip:
+        test_aug(args)
+        # exit program
+        exit()
 
 
     # Execute appropriate training/testing function based on configuration
