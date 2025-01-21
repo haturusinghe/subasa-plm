@@ -66,8 +66,6 @@ class SOLDDataset(Dataset):
             for j in rm_idxs:
                 removed_items.append(self.dataset[j])
                 del self.dataset[j]
-            self.logger.info(f"[DATASET] [MODE: {mode}] [SKIP_EMPTY_RAT] Removed {len(removed_items)} items")
-            self.logger.info(f"[DATASET] [MODE: {mode}] [REMOVED_ITEMS] {str(removed_items)}")
         
         self.mode = mode
         self.intermediate = args.intermediate
@@ -144,6 +142,7 @@ class SOLDAugmentedDataset(SOLDDataset):
         "Case Marker Insertion",
         "Proper Noun Punctuation"
     ]
+
 
     def __init__(self, args, mode='train', tokenizer=None):
         super().__init__(args, mode, tokenizer)
@@ -591,11 +590,11 @@ class SOLDAugmentedDataset(SOLDDataset):
                 inserted_positions.add(i+1)
                 inserted_positions.add(i+2)
                 count_inserted += 2
+            
         # Pattern: NPP -> NPP -> PUNC    
         elif t1[1] == "NPP" and t2[1] == "NPP" and t3[1] == "PUNC":
-            # Randomly decide between inserting before, after, or both with 1/3 probability each
             choice = random.random()
-            
+
             if choice < 1/3:
                 # Insert offensive adjective before noun
                 offensive_adj = random.choice(list(offensive_lexicon['JJ'].keys()))
@@ -605,8 +604,10 @@ class SOLDAugmentedDataset(SOLDDataset):
             elif choice < 2/3:
                 # Insert offensive noun after existing noun
                 offensive_noun = random.choice(list(offensive_lexicon['NNC'].keys()))
-                modified_tokens.insert(i+2, offensive_noun)
-                inserted_positions.add(i+2)
+                # j is random choice either 1 or 2
+                j = random.choice([1, 2])
+                modified_tokens.insert(i+j, offensive_noun)
+                inserted_positions.add(i+j)
                 count_inserted += 1
             else:
                 # Insert both before and after
@@ -617,8 +618,8 @@ class SOLDAugmentedDataset(SOLDDataset):
                 inserted_positions.add(i+1)
                 inserted_positions.add(i+2)
                 count_inserted += 2
-
-
+           
+         
         return modified_tokens, inserted_positions, count_inserted
 
     def _handle_compound_verb_modification(
