@@ -382,117 +382,48 @@ class SOLDAugmentedDataset(SOLDDataset):
             
         return categorized
 
-    @staticmethod
-    def extract_offensive_phrases(tokens, rationales, max_ngram=1):
+    def offensive_token_insertion(
+        self, 
+        tokens: List[str], 
+        pos_tags: List[Tuple[str, str]]
+    ) -> Tuple[List[str], List[int]]:
+        """Generate augmented offensive sentences using various strategies."""
+        if not tokens or not pos_tags:
+            return [], []
 
-        offensive_phrases = {}
-
-        # Find consecutive offensive tokens
-        for n in range(1, max_ngram + 1):
-            for i in range(len(tokens) - n + 1):
-                # Check if all tokens in this window are marked offensive
-                rat_portion = rationales[i:i+n]
-                str_portion = tokens[i:i+n]
-                if all(rat_portion):
-                    phrase = ' '.join(str_portion)
-                    if phrase not in offensive_phrases:
-                        offensive_phrases[phrase] = 1
-                    else:
-                        offensive_phrases[phrase] += 1
-                        
-        return offensive_phrases
-
-    @staticmethod
-    def categorize_offensive_phrases_old(phrases, pos_tagger):
-        categorized = {
-            'noun_phrases': [],
-            'verb_phrases': [],
-            'adjective_phrases': [],
-            'mixed_phrases': []
-        }
+        new_offensive_sentences = []
+        new_offensive_sentences_rationale = []
+        tried_strategies: Set[str] = set()
         
-        for phrase in phrases:
-            tokens = phrase.split()
-            pos_tags = pos_tagger.predict([tokens])[0]
+        while len(new_offensive_sentences) < self.MAX_NEW_SENTENCES_GENERATED:
+            modified_tokens = tokens.copy()
+            inserted_positions: Set[int] = set()
+            count_inserted = 0
             
-            # Determine phrase type based on POS pattern
-            if all(tag[1].startswith('N') for tag in pos_tags):
-                categorized['noun_phrases'].append(tuple(pos_tags))
-            elif all(tag[1].startswith('V') for tag in pos_tags):
-                categorized['verb_phrases'].append(tuple(pos_tags))
-            elif all(tag[1].startswith('J') for tag in pos_tags):
-                categorized['adjective_phrases'].append(tuple(pos_tags))
-            else:
-                categorized['mixed_phrases'].append(tuple(pos_tags))
-
-        categorized['noun_phrases'] = list(dict.fromkeys(categorized['noun_phrases']))
-        categorized['verb_phrases'] = list(dict.fromkeys(categorized['verb_phrases']))
-        categorized['adjective_phrases'] = list(dict.fromkeys(categorized['adjective_phrases']))
-        categorized['mixed_phrases'] = list(dict.fromkeys(categorized['mixed_phrases']))
+            available_strategies = [s for s in self.AUGMENTATION_STRATEGIES if s not in tried_strategies]
+            if not available_strategies:
+                break
                 
-        return categorized
-
-    @staticmethod
-    def categorize_offensive_phrases_older(offensive_single_word_list_with_pos_tags, pos_tagger):
-        categorized = {
-            'noun_modifiers': [],      # words that modify nouns (adjectives, determiners)
-            'verb_intensifiers': [],   # words that intensify verbs (adverbs, particles)
-            'interjections': [],       # standalone expressions, exclamations
-            'offensive_nouns': [],     # offensive nouns for direct replacement
-            'offensive_verbs': [],     # offensive verbs for action replacement
-            'pronouns': [],           # offensive pronouns (තෝ, උඹ)
-            'particles': [],          # emphatic particles that add offensive tone
-            'adjectives': [],         # offensive adjectives
-            'adverbs': []            # offensive adverbs
-        }
-
-
-        
-        for word,tag in offensive_single_word_list_with_pos_tags:
+            strategy = random.choice(available_strategies)
+            trigrams = list(zip(pos_tags[:-2], pos_tags[1:-1], pos_tags[2:]))
             
-            # Comprehensive single token classification
-            if tag.startswith('N'):
-                categorized['offensive_nouns'].append(word)
-                # Nouns can also act as modifiers in Sinhala
-                if tag == 'NNC':
-                    categorized['noun_modifiers'].append(word)
+            for i, trigram in enumerate(trigrams):
+                if count_inserted >= self.MAX_NEW_PHRASES_ALLOWED:
+                    break
                     
-            elif tag.startswith('V'):
-                categorized['offensive_verbs'].append(word)
-                # Some verb forms can act as intensifiers
-                if tag in ['VNN', 'VNF']:
-                    categorized['verb_intensifiers'].append(word)
-                    
-            elif tag.startswith('J'):
-                categorized['adjectives'].append(word)
-                categorized['noun_modifiers'].append(word)
-                
-            elif tag == 'RB':
-                categorized['adverbs'].append(word)
-                categorized['verb_intensifiers'].append(word)
-                
-            elif tag == 'DET' or tag == 'PRP':
-                categorized['pronouns'].append(word)
-                # Determiners and pronouns can modify nouns
-                categorized['noun_modifiers'].append(word)
-                
-            elif tag in ['UH', 'FS', 'INJ']:
-                categorized['interjections'].append(word)
-                
-            elif tag == 'RP':
-                categorized['particles'].append(word)
-                # Particles can intensify both nouns and verbs
-                categorized['verb_intensifiers'].append(word)
-                categorized['noun_modifiers'].append(word)
-                
-            # Words that can serve multiple functions
-            if tag in ['JJ', 'RB', 'RP', 'UH']:
-                # These can often be used as standalone offensive expressions
-                categorized['interjections'].append(word)
+                modified_tokens, inserted_positions, new_count = self._apply_augmentation_strategy(
+                    strategy, tokens, trigram, i, modified_tokens, 
+                    inserted_positions, self.categoried_offensive_phrases
+                )
+                count_inserted += new_count
 
-        # Remove duplicates while preserving order
-        for category in categorized:
-            categorized[category] = list(dict.fromkeys(categorized[category]))
+            rationale = self._generate_rationale(modified_tokens, inserted_positions)
+            new_sentence = ' '.join(modified_tokens)
+
+            if new_sentence.split() != tokens:
+                new_offensive_sentences.append(new_sentence)
+                new_offensive_sentences_rationale.append(rationale)
+                tried_strategies.add(strategy)
             
         return new_offensive_sentences, new_offensive_sentences_rationale
 
