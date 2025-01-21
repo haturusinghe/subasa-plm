@@ -519,75 +519,132 @@ class SOLDAugmentedDataset(SOLDDataset):
             if random.choice([True, False]):  # randomly choose start or end
                 modified_tokens.insert(0, random.choice(offensive_lexicon['interjections']))
             else:
-                modified_tokens.append(random.choice(offensive_lexicon['interjections']))
-        
-        return modified_tokens
-    
-    @staticmethod
-    def remove_duplicates(list_of_pairs):
-        seen = {}
-        return list(dict.fromkeys(map(tuple, list_of_pairs)).keys()
+                rationale.append(0)
+        return rationale
+
+    def _apply_augmentation_strategy(
+        self, 
+        strategy: str, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        """Apply a specific augmentation strategy and return modified data."""
+        count_inserted = 0
+        t1, t2, t3 = trigram
+
+        strategy_handlers = {
+            "Noun-Based Insertions": self._handle_noun_insertions,
+            "Adjective Replacement": self._handle_adjective_replacement,
+            "Verb Modification": self._handle_verb_modification,
+            "Proper Noun Modification": self._handle_proper_noun_modification,
+            "Adjective-Noun Combination": self._handle_adjective_noun_combination,
+            "Hybrid Approach": self._handle_hybrid_approach
+        }
+
+        if strategy in strategy_handlers:
+            modified_tokens, inserted_positions, count_inserted = strategy_handlers[strategy](
+                tokens, trigram, i, modified_tokens, inserted_positions, offensive_lexicon
+            )
+
+        return modified_tokens, inserted_positions, count_inserted
+
+    def _handle_noun_insertions(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
+        if t1[1] == "NNC" and t2[1] == "NNC":
+            # Select random offensive noun from NNC category
+            offensive_noun = random.choice(list(offensive_lexicon['NNC'].keys()))
+            modified_tokens.insert(i+1, offensive_noun)
+            inserted_positions.add(i+1)
+            count_inserted += 1
+        return modified_tokens, inserted_positions, count_inserted
+
+    def _handle_adjective_replacement(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
+        if (t1[1] == "NNC" and t2[1] == "JJ" and t3[1] == "NNC") or \
+        (t1[1] == "JJ" and t2[1] == "JJ" and t3[1] == "NNC"):
+            modified_tokens[i+1] = random.choice(list(offensive_lexicon['JJ'].keys()))
+            inserted_positions.add(i+1)
+            count_inserted += 1
+        return modified_tokens, inserted_positions, count_inserted
+
+    def _handle_verb_modification(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
+        if (t1[1] == "NNC" and t2[1] == "VP" and t3[1] == "NNC") or \
+        (t1[1] == "NNC" and t2[1] == "NNC" and t3[1] == "VP"):
+            modified_tokens[i+2] = random.choice(list(offensive_lexicon['VP'].keys()))
+            inserted_positions.add(i+2)
+            count_inserted += 1
+        return modified_tokens, inserted_positions, count_inserted
+
+    def _handle_proper_noun_modification(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
+        if t1[1] == "NNP" and t2[1] == "NNP" and t3[1] == "NNP":
+            offensive_noun = random.choice(list(offensive_lexicon['NNP'].keys()))
+            modified_tokens.insert(i+1, offensive_noun)
+            inserted_positions.add(i+1)
+            count_inserted += 1
+        return modified_tokens, inserted_positions, count_inserted
+
+    def _handle_hybrid_approach(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
+        if t1[1] == "JJ" and t2[1] == "NNC" and t3[1] == "VP":
+            # Replace both adjective and verb
+            modified_tokens[i] = random.choice(list(offensive_lexicon['JJ'].keys()))
+            modified_tokens[i+2] = random.choice(list(offensive_lexicon['VP'].keys()))
+            inserted_positions.update([i, i+2])
+            count_inserted += 2
+        return modified_tokens, inserted_positions, count_inserted
 
 
-    def offensive_token_insertion(self, tokens, pos_tags):
-        if not tokens or not pos_tags:
-            return None, None
-            
-        modified_tokens = tokens.copy()
-        offensive_lexicon = self.categoried_offensive_phrases
-        inserted_positions = set()
-        count_of_inserted = 0
-        
-        # Equal probability for all patterns
-        INSERTION_PROB = 0.2
-        MAX_INSERTIONS = 2
-        
-        # Process trigrams
-        for i in range(len(pos_tags) - 2):
-            if count_of_inserted >= MAX_INSERTIONS:
-                break
-                
-            trigram_tags = [pos_tags[j][1] for j in range(i, i + 3)]
-            
-            # Random pattern selection with equal probability
-            if True: #random.random() < INSERTION_PROB:
-                patterns = [
-                    ('NNC', 'NNC', 'NNC', 'nnc_patterns'),
-                    ('NNP', 'NNP', 'NNP', 'nnp_patterns'),
-                    ('JJ', 'NNC', 'NNC', 'adjective_patterns'),
-                    ('NNC', 'VP', 'NNC', 'verb_patterns')
-                ]
-                
-                for pattern_tags, category in patterns:
-                    if trigram_tags == list(pattern_tags):
-                        if offensive_lexicon[category]:
-                            offensive_word = random.choice(offensive_lexicon[category])
-                            insert_position = i + 1
-                            modified_tokens.insert(insert_position, offensive_word)
-                            inserted_positions.add(insert_position)
-                            count_of_inserted += 1
-                            break
-        
-        # Add standalone offensive words at boundaries
-        if count_of_inserted < MAX_INSERTIONS and offensive_lexicon['standalone']:
-            if random.random() < INSERTION_PROB:
-                position = random.choice([0, len(modified_tokens)])
-                offensive_word = random.choice(offensive_lexicon['standalone'])
-                modified_tokens.insert(position, offensive_word)
-                inserted_positions.add(position)
-        
-        # Generate rationale tokens
-        rationale_tokens = []
-        for i, token in enumerate(modified_tokens):
-            if i in inserted_positions:
-                rationale_tokens.extend([1] * len(token.split()))
-            else:
-                rationale_tokens.extend([0] * len(token.split()))
-        
-        if ' '.join(modified_tokens).split() == tokens:
-            return None, None
-        
-        return modified_tokens, rationale_tokens
 
 
 
