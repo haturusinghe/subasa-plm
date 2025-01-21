@@ -341,44 +341,19 @@ class SOLDAugmentedDataset(SOLDDataset):
 
     @staticmethod
     def categorize_offensive_phrases(offensive_single_word_list_with_pos_tags):
-        categorized = {
-            'nnc_patterns': [],      # Compound nouns (42.90%)
-            'nnp_patterns': [],      # Proper nouns (19.92%)
-            'adjective_patterns': [], # Adjectives (9.15%)
-            'verb_patterns': [],      # Verb forms (VNF, VP, VNN combined)
-            'pronouns': [],          # Pronouns and determiners
-            'standalone': [],        # Interjections, abbreviations
-            'multi_word': [],         # For handling multi-token patterns
-            'other': []              # For any other patterns
-        }
-        
+        categorized = {}
+        # Initialize the structure with an empty dict for each tag we encounter
+        for _, tag in offensive_single_word_list_with_pos_tags:
+            if tag not in categorized:
+                categorized[tag] = {}
+
+        # Count occurrences of each word for each POS tag
         for word, tag in offensive_single_word_list_with_pos_tags:
-            if tag == 'NNC':
-                categorized['nnc_patterns'].append(word)
-                
-            elif tag == 'NNP':
-                categorized['nnp_patterns'].append(word)
-                
-            elif tag.startswith('J'):
-                categorized['adjective_patterns'].append(word)
-                
-            elif tag in ['VNF', 'VP', 'VNN', 'VFM']:
-                categorized['verb_patterns'].append(word)
-                
-            elif tag == 'PRP':
-                categorized['pronouns'].append(word)
-                
-            elif tag in ['FS', 'ABB', 'UH']:
-                categorized['standalone'].append(word)
-            else:
-                categorized['other'].append((word, tag))
-                
-        # Remove duplicates while preserving order
-        for category in categorized:
-            categorized[category] = list(dict.fromkeys(categorized[category]))
+            if word not in categorized[tag]:
+                categorized[tag][word] = 0
+            categorized[tag][word] += 1
             
         return categorized
-
 
     @staticmethod
     def extract_offensive_phrases(tokens, rationales, max_ngram=1):
@@ -551,7 +526,7 @@ class SOLDAugmentedDataset(SOLDDataset):
     @staticmethod
     def remove_duplicates(list_of_pairs):
         seen = {}
-        return list(dict.fromkeys(map(tuple, list_of_pairs)).keys())
+        return list(dict.fromkeys(map(tuple, list_of_pairs)).keys()
 
 
     def offensive_token_insertion(self, tokens, pos_tags):
