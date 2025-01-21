@@ -256,27 +256,27 @@ class SOLDAugmentedDataset(SOLDDataset):
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=1)
         
-
-
     def generate_augmented_data(self):
         """Generate augmented offensive data from non-offensive sentences."""
         for item in self.non_offensive_data_only[:]:  # Create a copy to iterate
             text_tokens = item['tokens'].split()
             pos_tags = self.pos_tagger.predict([text_tokens])[0]
             
-            augmented_tokens, augmented_rationale = self.offensive_token_insertion(text_tokens, pos_tags)
-            if augmented_tokens and augmented_rationale:
-                augmented_sentence = ' '.join(augmented_tokens)
-            
-                new_item = {
-                    'post_id': f"{item['post_id']}_aug",
-                    'text': augmented_sentence,
-                    'tokens': augmented_sentence,
-                    'rationales': str(augmented_rationale),
-                    'label': 'OFF',
-                }
-                self.augmented_data.append(new_item)
-                self.non_offensive_data_selected.append(item)
+            augmented_tokens_list, augmented_rationale_list = self.offensive_token_insertion(text_tokens, pos_tags)
+
+            for augmented_tokens, augmented_rationale in zip(augmented_tokens_list, augmented_rationale_list):
+                if augmented_tokens and augmented_rationale:
+                    augmented_sentence = ' '.join(augmented_tokens)
+                
+                    new_item = {
+                        'post_id': f"{item['post_id']}_aug",
+                        'text': augmented_sentence,
+                        'tokens': augmented_sentence,
+                        'rationales': str(augmented_rationale),
+                        'label': 'OFF',
+                    }
+                    self.augmented_data.append(new_item)
+                    self.non_offensive_data_selected.append(item)
         
         # make copy of the augmented data and extend it with non_offensive_data_selected to create the final dataset
         copy_of_augmented_data = copy.deepcopy(self.augmented_data)
