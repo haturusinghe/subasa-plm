@@ -125,10 +125,26 @@ class SOLDDataset(Dataset):
             return ()
 
 
+from typing import List, Dict, Set, Tuple, Optional
+from pathlib import Path
+
 class SOLDAugmentedDataset(SOLDDataset):
+    # Configuration constants
+    MAX_NEW_PHRASES_ALLOWED = 3
+    MAX_NEW_SENTENCES_GENERATED = 5
+    AUGMENTATION_STRATEGIES = [
+        "Noun-Based Insertions",
+        "Adjective Replacement",
+        "Verb Modification",
+        "Proper Noun Modification",
+        "Adjective-Noun Combination",
+        "Hybrid Approach"
+    ]
+
     def __init__(self, args, mode='train', tokenizer=None):
         super().__init__(args, mode, tokenizer)
-        self.output_dir = "json_dump"
+        self.output_dir = Path("json_dump")
+        self.output_dir.mkdir(exist_ok=True)
         self.initialize_data_structures()
         self.load_and_process_data()
         self.process_offensive_words()
