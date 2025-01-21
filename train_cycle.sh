@@ -78,3 +78,5 @@ python main.py --pretrained_model xlm-roberta-base --val_int 1000 --patience 3 -
 
 python main.py --pretrained_model xlm-roberta-base --val_int 1000 --patience 3 --epochs 1 --batch_size 1 --lr 0.00002 --seed 66 --wandb_project ablataion-study-ctrl-1 --finetuning_stage final --dataset sold --num_labels 2 --mask_ratio 0.5 --test True --test_model_path final_finetune/final_w_mlm_0.5_seed66/ep4.ckpt --push_to_hub True
 
+# STOP GOOGLE COLLAB SESSION VIA COMMAND LINE
+python -c "from google.colab import runtime; runtime.unassign()"
