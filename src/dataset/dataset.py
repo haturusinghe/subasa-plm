@@ -137,9 +137,12 @@ class SOLDAugmentedDataset(SOLDDataset):
         "Adjective Replacement",
         "Verb Modification",
         "Proper Noun Modification",
-        # "Adjective-Noun Combination",
         "Hybrid Approach",
-        "Insert for PUNC"
+        "Insert for PUNC",
+        "Compound Verb Modification",
+        "Extended Verb Patterns",
+        "Case Marker Insertion",
+        "Proper Noun Punctuation"
     ]
 
     def __init__(self, args, mode='train', tokenizer=None):
@@ -351,9 +354,11 @@ class SOLDAugmentedDataset(SOLDDataset):
             inserted_positions: Set[int] = set()
             count_inserted = 0
             
-            available_strategies = [s for s in self.AUGMENTATION_STRATEGIES] #if s not in tried_strategies]
+            available_strategies = [s for s in self.AUGMENTATION_STRATEGIES if s not in tried_strategies]
             if not available_strategies:
-                break
+                # reset tried strategies and try again
+                tried_strategies = set()
+                available_strategies = self.AUGMENTATION_STRATEGIES
                 
             strategy = random.choice(available_strategies)
             trigrams = list(zip(pos_tags[:-2], pos_tags[1:-1], pos_tags[2:]))
@@ -407,14 +412,18 @@ class SOLDAugmentedDataset(SOLDDataset):
         t1, t2, t3 = trigram
 
         strategy_handlers = {
-            "Noun-Based Insertions": self._handle_noun_insertions,
-            "Adjective Replacement": self._handle_adjective_replacement,
-            "Verb Modification": self._handle_verb_modification,
-            "Proper Noun Modification": self._handle_proper_noun_modification,
-            # "Adjective-Noun Combination": self._handle_adjective_noun_combination,
-            "Hybrid Approach": self._handle_hybrid_approach,
-            "Insert for PUNC": self._handle_punctuation_noun_pattern,
-        }
+    "Noun-Based Insertions": self._handle_noun_insertions,
+    "Adjective Replacement": self._handle_adjective_replacement,
+    "Verb Modification": self._handle_verb_modification,
+    "Proper Noun Modification": self._handle_proper_noun_modification,
+    "Hybrid Approach": self._handle_hybrid_approach,
+    "Insert for PUNC": self._handle_punctuation_noun_pattern,
+    "Compound Verb Modification": self._handle_compound_verb_modification,
+    "Extended Verb Patterns": self._handle_verb_patterns,
+    "Case Marker Insertion": self._handle_case_marker_insertion,
+    "Proper Noun Punctuation": self.handle_proper_noun_punctuation
+}
+
 
         if strategy in strategy_handlers:
             modified_tokens, inserted_positions, count_inserted = strategy_handlers[strategy](
