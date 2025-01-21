@@ -284,6 +284,41 @@ class SOLDAugmentedDataset(SOLDDataset):
 
     @staticmethod
     def categorize_offensive_phrases(offensive_single_word_list_with_pos_tags):
+        """
+            POS Tag and Meaning:
+
+            NNC - Common Noun  
+            NNP - Proper Noun  
+            PRP - Pronoun  
+            QUE - Questioning Pronoun  
+            NDT - Deterministic Pronoun  
+            QBE - Question Based Pronoun  
+            VFM - Verb Finite  
+            VP - Verb Particle  
+            VNN - Verbal Noun  
+            AUX - Modal Auxiliary  
+            VNF - Verb Non Finite  
+            NCV - Noun in Compound Verb  
+            JCV - Adjective in Compound Verb  
+            RRPCV - Particle in Compound Verb  
+            JJ - Adjective  
+            NNJ - Adjectival Noun  
+            RB - Adverbs  
+            POST - Postposition  
+            CC - Conjunction  
+            RP - Particle  
+            DET - Determiner  
+            CM - Case Maker  
+            NVB - Noun in Sentence Ending  
+            NUM - Number  
+            ABB - Abbreviation  
+            FS - Full Stop  
+            PUNC - Punctuation  
+            FRW - Foreign Word  
+            UNK - Undefined
+
+        """
+
         categorized = {}
         # Initialize the structure with an empty dict for each tag we encounter
         for _, tag in offensive_single_word_list_with_pos_tags:
