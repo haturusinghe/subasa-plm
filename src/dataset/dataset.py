@@ -347,22 +347,21 @@ class SOLDAugmentedDataset(SOLDDataset):
 
         new_offensive_sentences_tokens = []
         new_offensive_sentences_rationale = []
-        tried_strategies: Set[str] = set()
+        failed_strategies: Set[str] = set()
         
         while len(new_offensive_sentences_tokens) < self.MAX_NEW_SENTENCES_GENERATED:
             modified_tokens = tokens.copy()
             inserted_positions: Set[int] = set()
             count_inserted = 0
             
-            available_strategies = [s for s in self.AUGMENTATION_STRATEGIES if s not in tried_strategies]
+            available_strategies = [s for s in self.AUGMENTATION_STRATEGIES if s not in failed_strategies]
             if not available_strategies:
-                # reset tried strategies and try again
-                tried_strategies = set()
-                available_strategies = self.AUGMENTATION_STRATEGIES
+                break
                 
             strategy = random.choice(available_strategies)
             trigrams = list(zip(pos_tags[:-2], pos_tags[1:-1], pos_tags[2:]))
-            
+            trigrams = trigrams
+
             for i, trigram in enumerate(trigrams):
                 if count_inserted >= self.MAX_NEW_PHRASES_ALLOWED:
                     break
@@ -379,7 +378,8 @@ class SOLDAugmentedDataset(SOLDDataset):
             if new_sentence.split() != tokens:
                 new_offensive_sentences_tokens.append(new_sentence.split())
                 new_offensive_sentences_rationale.append(rationale)
-                tried_strategies.add(strategy)
+            else:
+                failed_strategies.add(strategy)
             
         return new_offensive_sentences_tokens, new_offensive_sentences_rationale
 
