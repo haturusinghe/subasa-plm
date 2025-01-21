@@ -102,6 +102,12 @@ def parse_args():
     parser.add_argument('--top_k', default=5, help='the top num of attention values to evaluate on explainable metrics')
     parser.add_argument('--lime_n_sample', default=100, help='the num of samples for lime explainer')
 
+    ## User given experiment name
+    parser.add_argument('--exp_save_name', type=str, default=None, help='an experiment name')
+
+    ## Use a shorter file name for model checkpoints
+    parser.add_argument('--short_name', default=False, help='use a shorter name for model checkpoints', type=bool)
+
 
     return parser.parse_args()
 
