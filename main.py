@@ -374,7 +374,11 @@ def test_mrp(args):
         model = XLMRobertaCustomForTCwMRP.from_pretrained(args.test_model_path)
         hidden_size = model.config.hidden_size 
         emb_layer = nn.Embedding(args.n_tk_label, hidden_size)
-        loaded_state_dict = torch.load(args.test_model_path + '_emb_layer_states.ckpt')
+        emb_file_name  = args.test_model_path.split('/')[-1] + '_emb_layer_states.ckpt'
+        embedding_layer_path = os.path.join(args.test_model_path, emb_file_name)
+        loaded_state_dict = torch.load(embedding_layer_path)
+
+        
         emb_layer.load_state_dict(loaded_state_dict)
         model.config.output_attentions=True
 
@@ -595,29 +599,43 @@ def train_offensive_detection(args):
 
 
 def load_model_train(args):
+    print("\nLoading model and tokenizer for training...")
     tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
     tokenizer = add_tokens_to_tokenizer(args, tokenizer)
     model = XLMRobertaForSequenceClassification.from_pretrained(args.pretrained_model, num_labels=args.num_labels)
+    print(f"Loaded base model: {args.pretrained_model}")
 
+    print(f"\nLoading pre-finetuned model from: {args.pre_finetuned_model}")
     if 'mlm' in args.pre_finetuned_model:
+        print("Loading MLM pre-finetuned model...")
         pre_finetuned_model = XLMRobertaForMaskedLM.from_pretrained(args.pre_finetuned_model) 
     else:
+        print("Loading Token Classification pre-finetuned model...")
         pre_finetuned_model = XLMRobertaForTokenClassification.from_pretrained(args.pre_finetuned_model)
 
+    print("\nTransferring weights from pre-finetuned model...")
     model_state = model.state_dict()
     finetuned_state = pre_finetuned_model.state_dict()
 
+    print(f"Base model parameters: {len(model_state)}")
+    print(f"Pre-finetuned model parameters: {len(finetuned_state)}")
     
     # Initialize condition layer randomly 
     filtered_pretrained_state = {}
+    transferred = 0
     for (k1, v1), (k2, v2) in zip(model_state.items(), finetuned_state.items()):
         if v1.size() == v2.size():
             filtered_pretrained_state[k1] = v2
+            transferred += 1
         else:
             filtered_pretrained_state[k1] = v1
+            print(f"Size mismatch for {k1}, keeping original initialization")
 
     model_state.update(filtered_pretrained_state)
     model.load_state_dict(model_state, strict=True)
+
+    print(f"Successfully transferred {transferred} parameters")
+    print(f"Final model hidden size: {model.config.hidden_size}")
 
     args.hidden_size = model.config.hidden_size
 
