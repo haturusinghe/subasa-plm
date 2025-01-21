@@ -25,7 +25,7 @@ from transformers import (
 )
 
 # Local imports
-from src.dataset.dataset import SOLDDataset
+from src.dataset.dataset import SOLDAugmentedDataset, SOLDDataset
 from src.evaluate.evaluate import evaluate, evaluate_for_hatespeech
 from src.evaluate.lime import TestLime
 from src.models.custom_models import XLMRobertaCustomForTCwMRP
@@ -107,6 +107,9 @@ def parse_args():
 
     ## Use a shorter file name for model checkpoints
     parser.add_argument('--short_name', default=False, help='use a shorter name for model checkpoints', type=bool)
+
+    #TEMP Skip arg for testing data augmentation
+    parser.add_argument('--skip', default=False, help='skip data augmentation', type=bool)
 
 
     return parser.parse_args()
@@ -745,6 +748,17 @@ def test_for_hate_speech(args):
         # get_explain_results(args)  # The test_res_explain.txt file will be written
 
 
+def test_aug(args):
+    train_dataset = SOLDAugmentedDataset(args, 'train')
+    val_dataset = SOLDAugmentedDataset(args, 'val')
+    test_dataset = SOLDAugmentedDataset(args, 'test')
+
+    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
+    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+
+
+
 if __name__ == '__main__':
     args = parse_args()
     args.device = get_device()
@@ -763,6 +777,12 @@ if __name__ == '__main__':
     # Setup experiment name and directories
     args.exp_name, args.dir_result = setup_directories(args)
     print("Checkpoint path: ", args.dir_result)
+
+    #TEMP - Skip data augmentation
+    if args.skip:
+        test_aug(args)
+        # exit program
+        exit()
 
 
     # Execute appropriate training/testing function based on configuration
