@@ -138,7 +138,7 @@ class SOLDAugmentedDataset(SOLDDataset):
         """Initialize all data structures used by the class."""
         self.offensive_data_only = []
         self.non_offensive_data_only = []
-        self.offensive_word_list = []
+        self.offensive_ngram_list = []
         self.categoried_offensive_phrases = {}
         self.augmented_data = []
         self.non_offensive_data_selected = []
@@ -180,8 +180,8 @@ class SOLDAugmentedDataset(SOLDDataset):
 
     def process_offensive_words(self):
         """Extract and categorize offensive phrases."""
-        self._extract_offensive_words()
-        self.offensive_word_list = list(dict.fromkeys(self.offensive_word_list))
+        self._extract_offensive_ngrams()
+        self.offensive_ngram_list = list(dict.fromkeys(self.offensive_ngram_list))
         self.offensive_single_word_list_with_pos_tags = self.remove_duplicates(self.offensive_single_word_list_with_pos_tags)
         self.categoried_offensive_phrases = self.categorize_offensive_phrases(
             self.offensive_single_word_list_with_pos_tags, # self.offensive_word_list, 
@@ -189,16 +189,17 @@ class SOLDAugmentedDataset(SOLDDataset):
         )
         self._save_processed_data()
 
-    def _extract_offensive_words(self):
+    def _extract_offensive_ngrams(self):
         """Extract offensive phrases from the dataset."""
         for item in self.offensive_data_only:
             text_tokens = item['tokens'].split()
             raw_rationale_tokens = literal_eval(item['rationales'])
             offensive_phrases = self.extract_offensive_phrases(
                 text_tokens, 
-                raw_rationale_tokens
+                raw_rationale_tokens,
+                max_ngram=1
             )
-            self.offensive_word_list.extend(offensive_phrases.keys())
+            self.offensive_ngram_list.extend(offensive_phrases.keys())
 
     def _save_processed_data(self):
         """Save all processed data to JSON files."""
