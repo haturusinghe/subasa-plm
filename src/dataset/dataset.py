@@ -137,8 +137,9 @@ class SOLDAugmentedDataset(SOLDDataset):
         "Adjective Replacement",
         "Verb Modification",
         "Proper Noun Modification",
-        "Adjective-Noun Combination",
-        "Hybrid Approach"
+        # "Adjective-Noun Combination",
+        "Hybrid Approach",
+        "Insert for PUNC"
     ]
 
     def __init__(self, args, mode='train', tokenizer=None):
@@ -200,7 +201,6 @@ class SOLDAugmentedDataset(SOLDDataset):
             self.offensive_single_word_list_with_pos_tags, # self.offensive_word_list, 
         )
         self.categoried_offensive_phrases = self.filter_low_count_words(self.categoried_offensive_phrases)
-        # keys_of_offensive_phrases = list(self.categoried_offensive_phrases.keys())
         self._save_processed_data()
     
     @staticmethod
@@ -342,16 +342,16 @@ class SOLDAugmentedDataset(SOLDDataset):
         if not tokens or not pos_tags:
             return [], []
 
-        new_offensive_sentences = []
+        new_offensive_sentences_tokens = []
         new_offensive_sentences_rationale = []
         tried_strategies: Set[str] = set()
         
-        while len(new_offensive_sentences) < self.MAX_NEW_SENTENCES_GENERATED:
+        while len(new_offensive_sentences_tokens) < self.MAX_NEW_SENTENCES_GENERATED:
             modified_tokens = tokens.copy()
             inserted_positions: Set[int] = set()
             count_inserted = 0
             
-            available_strategies = [s for s in self.AUGMENTATION_STRATEGIES if s not in tried_strategies]
+            available_strategies = [s for s in self.AUGMENTATION_STRATEGIES] #if s not in tried_strategies]
             if not available_strategies:
                 break
                 
@@ -372,11 +372,11 @@ class SOLDAugmentedDataset(SOLDDataset):
             new_sentence = ' '.join(modified_tokens)
 
             if new_sentence.split() != tokens:
-                new_offensive_sentences.append(new_sentence)
+                new_offensive_sentences_tokens.append(new_sentence.split())
                 new_offensive_sentences_rationale.append(rationale)
                 tried_strategies.add(strategy)
             
-        return new_offensive_sentences, new_offensive_sentences_rationale
+        return new_offensive_sentences_tokens, new_offensive_sentences_rationale
 
     def _generate_rationale(
         self, 
@@ -411,8 +411,9 @@ class SOLDAugmentedDataset(SOLDDataset):
             "Adjective Replacement": self._handle_adjective_replacement,
             "Verb Modification": self._handle_verb_modification,
             "Proper Noun Modification": self._handle_proper_noun_modification,
-            "Adjective-Noun Combination": self._handle_adjective_noun_combination,
-            "Hybrid Approach": self._handle_hybrid_approach
+            # "Adjective-Noun Combination": self._handle_adjective_noun_combination,
+            "Hybrid Approach": self._handle_hybrid_approach,
+            "Insert for PUNC": self._handle_punctuation_noun_pattern,
         }
 
         if strategy in strategy_handlers:
@@ -458,6 +459,7 @@ class SOLDAugmentedDataset(SOLDDataset):
         if ((t1[1] == "NNC" and t2[1] == "JJ" and t3[1] == "NNC") or
             (t1[1] == "JJ" and t2[1] == "JJ" and t3[1] == "NNC")):
             offensive_adj = random.choice(list(offensive_lexicon['JJ'].keys()))
+
             if t1[1] == "JJ" and t2[1] == "JJ":
                 # Insert between consecutive adjectives
                 modified_tokens.insert(i+1, offensive_adj)
@@ -485,6 +487,7 @@ class SOLDAugmentedDataset(SOLDDataset):
         if ((t1[1] == "NNC" and t2[1] == "VP" and t3[1] == "NNC") or
             (t1[1] == "NNC" and t2[1] == "NNC" and t3[1] == "VP")):
             offensive_verb = random.choice(list(offensive_lexicon['VP'].keys()))
+
             if t2[1] == "VP":
                 modified_tokens[i+1] = offensive_verb
                 inserted_positions.add(i+1)
