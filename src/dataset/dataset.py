@@ -150,20 +150,18 @@ class SOLDAugmentedDataset(SOLDDataset):
         self.process_offensive_words()
         self.generate_augmented_data()
 
-    def initialize_data_structures(self):
+    def initialize_data_structures(self) -> None:
         """Initialize all data structures used by the class."""
-        self.offensive_data_only = []
-        self.non_offensive_data_only = []
-        self.offensive_ngram_list = []
-        self.categoried_offensive_phrases = {}
-        self.augmented_data = []
-        self.non_offensive_data_selected = []
-        self.offensive_data_with_pos_tags = []
-        self.non_offensive_data_with_pos_tags = []
+        self.offensive_data_only: List[Dict] = []
+        self.non_offensive_data_only: List[Dict] = []
+        self.offensive_ngram_list: List[str] = []
+        self.categoried_offensive_phrases: Dict = {}
+        self.augmented_data: List[Dict] = []
+        self.non_offensive_data_selected: List[Dict] = []
+        self.offensive_data_with_pos_tags: List[List[Tuple[str, str]]] = []
+        self.non_offensive_data_with_pos_tags: List[List[Tuple[str, str]]] = []
         self.pos_tagger = POSTagger()
-        self.final_non_offensive_data = []
-        self.final_offensive_data = []
-        self.offensive_single_word_list_with_pos_tags = []
+        self.offensive_single_word_list_with_pos_tags: List[Tuple[str, str]] = []
 
     def load_and_process_data(self):
         """Load and separate offensive and non-offensive data."""
@@ -202,7 +200,20 @@ class SOLDAugmentedDataset(SOLDDataset):
         self.categoried_offensive_phrases = self.categorize_offensive_phrases(
             self.offensive_single_word_list_with_pos_tags, # self.offensive_word_list, 
         )
+        self.categoried_offensive_phrases = self.filter_low_count_words(self.categoried_offensive_phrases)
+        # keys_of_offensive_phrases = list(self.categoried_offensive_phrases.keys())
         self._save_processed_data()
+    
+    @staticmethod
+    def filter_low_count_words(pos_dict):
+        """Remove words with count < 2 from POS dictionary"""
+
+        filtered_data = {
+            outer_key: {inner_key: freq for inner_key, freq in inner_dict.items() if freq >= 2}
+            for outer_key, inner_dict in pos_dict.items()
+        }
+
+        return filtered_data
 
     def _extract_offensive_ngrams(self):
         """Extract offensive phrases from the dataset."""
