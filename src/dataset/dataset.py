@@ -540,6 +540,75 @@ class SOLDAugmentedDataset(SOLDDataset):
             inserted_positions.add(i+1)
             count_inserted += 1
         return modified_tokens, inserted_positions, count_inserted
+    
+    def _handle_punctuation_noun_pattern(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
+        
+        # Pattern: PUNC -> NNC -> PUNC
+        if t1[1] == "PUNC" and t2[1] == "NNC" and t3[1] == "PUNC":
+            # Randomly decide between inserting before, after, or both with 1/3 probability each
+            choice = random.random()
+            
+            if choice < 1/3:
+                # Insert offensive adjective before noun
+                offensive_adj = random.choice(list(offensive_lexicon['JJ'].keys()))
+                modified_tokens.insert(i+1, offensive_adj)
+                inserted_positions.add(i+1)
+                count_inserted += 1
+            elif choice < 2/3:
+                # Insert offensive noun after existing noun
+                offensive_noun = random.choice(list(offensive_lexicon['NNC'].keys()))
+                modified_tokens.insert(i+2, offensive_noun)
+                inserted_positions.add(i+2)
+                count_inserted += 1
+            else:
+                # Insert both before and after
+                offensive_adj = random.choice(list(offensive_lexicon['JJ'].keys()))
+                offensive_noun = random.choice(list(offensive_lexicon['NNC'].keys()))
+                modified_tokens.insert(i+1, offensive_adj)
+                modified_tokens.insert(i+2, offensive_noun)
+                inserted_positions.add(i+1)
+                inserted_positions.add(i+2)
+                count_inserted += 2
+        # Pattern: NPP -> NPP -> PUNC    
+        elif t1[1] == "NPP" and t2[1] == "NPP" and t3[1] == "PUNC":
+            # Randomly decide between inserting before, after, or both with 1/3 probability each
+            choice = random.random()
+            
+            if choice < 1/3:
+                # Insert offensive adjective before noun
+                offensive_adj = random.choice(list(offensive_lexicon['JJ'].keys()))
+                modified_tokens.insert(i+1, offensive_adj)
+                inserted_positions.add(i+1)
+                count_inserted += 1
+            elif choice < 2/3:
+                # Insert offensive noun after existing noun
+                offensive_noun = random.choice(list(offensive_lexicon['NNC'].keys()))
+                modified_tokens.insert(i+2, offensive_noun)
+                inserted_positions.add(i+2)
+                count_inserted += 1
+            else:
+                # Insert both before and after
+                offensive_adj = random.choice(list(offensive_lexicon['JJ'].keys()))
+                offensive_noun = random.choice(list(offensive_lexicon['NNC'].keys()))
+                modified_tokens.insert(i+1, offensive_adj)
+                modified_tokens.insert(i+2, offensive_noun)
+                inserted_positions.add(i+1)
+                inserted_positions.add(i+2)
+                count_inserted += 2
+
+
+        return modified_tokens, inserted_positions, count_inserted
+
 
 
 
