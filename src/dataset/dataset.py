@@ -621,7 +621,72 @@ class SOLDAugmentedDataset(SOLDDataset):
 
         return modified_tokens, inserted_positions, count_inserted
 
+    def _handle_compound_verb_modification(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
+        
+        # Pattern: NCV -> RRPCV or JCV -> RRPCV
+        if ((t1[1] == "NCV" and t2[1] == "RRPCV") or 
+            (t1[1] == "JCV" and t2[1] == "RRPCV")):
+            if t1[1] == "NCV" and 'NNC' in offensive_lexicon:
+                offensive_word = random.choice(list(offensive_lexicon['NNC'].keys()))
+            elif t1[1] == "JCV" and 'JJ' in offensive_lexicon:
+                offensive_word = random.choice(list(offensive_lexicon['JJ'].keys()))
+            modified_tokens[i] = offensive_word
+            inserted_positions.add(i)
+            count_inserted += 1
+        return modified_tokens, inserted_positions, count_inserted
 
+    def _handle_case_marker_insertion(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
+        
+        # Pattern: NNC -> CM or NNC -> POST
+        if t1[1] == "NNC" and (t2[1] == "CM" or t2[1] == "POST"):
+            if 'NNC' in offensive_lexicon:
+                offensive_noun = random.choice(list(offensive_lexicon['NNC'].keys()))
+                modified_tokens.insert(i+1, offensive_noun)
+                inserted_positions.add(i+1)
+                count_inserted += 1
+        return modified_tokens, inserted_positions, count_inserted
+
+    def handle_proper_noun_punctuation(
+        self, 
+        tokens: List[str], 
+        trigram: Tuple[Tuple[str, str], ...], 
+        i: int,
+        modified_tokens: List[str],
+        inserted_positions: Set[int],
+        offensive_lexicon: Dict
+    ) -> Tuple[List[str], Set[int], int]:
+        t1, t2, t3 = trigram
+        count_inserted = 0
+        
+        if t1[1] == "NNP" and t2[1] == "NNP" and t3[1] == "PUNC":
+            # Insert offensive adjective between proper nouns
+            if 'JJ' in offensive_lexicon:
+                offensive_adj = random.choice(list(offensive_lexicon['JJ'].keys()))
+                modified_tokens.insert(i+1, offensive_adj)
+                inserted_positions.add(i+1)
+                count_inserted += 1
+                
+        return modified_tokens, inserted_positions, count_inserted
 
 
 
