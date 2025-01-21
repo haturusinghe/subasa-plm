@@ -185,7 +185,6 @@ class SOLDAugmentedDataset(SOLDDataset):
         self.offensive_single_word_list_with_pos_tags = self.remove_duplicates(self.offensive_single_word_list_with_pos_tags)
         self.categoried_offensive_phrases = self.categorize_offensive_phrases(
             self.offensive_single_word_list_with_pos_tags, # self.offensive_word_list, 
-            self.pos_tagger
         )
         self._save_processed_data()
 
@@ -265,7 +264,7 @@ class SOLDAugmentedDataset(SOLDDataset):
 
         self._save_augmented_data()
 
-    def offensive_token_insertion(self, tokens, pos_tags):
+    def offensive_token_insertion_older(self, tokens, pos_tags):
         """
         Insert offensive tokens into a non-offensive sentence based on POS patterns.
         Returns modified tokens or None if no valid insertions possible.
@@ -341,6 +340,47 @@ class SOLDAugmentedDataset(SOLDDataset):
         return pre_modified_tokens, after_modification_rationale_tokens
 
     @staticmethod
+    def categorize_offensive_phrases(offensive_single_word_list_with_pos_tags):
+        categorized = {
+            'nnc_patterns': [],      # Compound nouns (42.90%)
+            'nnp_patterns': [],      # Proper nouns (19.92%)
+            'adjective_patterns': [], # Adjectives (9.15%)
+            'verb_patterns': [],      # Verb forms (VNF, VP, VNN combined)
+            'pronouns': [],          # Pronouns and determiners
+            'standalone': [],        # Interjections, abbreviations
+            'multi_word': [],         # For handling multi-token patterns
+            'other': []              # For any other patterns
+        }
+        
+        for word, tag in offensive_single_word_list_with_pos_tags:
+            if tag == 'NNC':
+                categorized['nnc_patterns'].append(word)
+                
+            elif tag == 'NNP':
+                categorized['nnp_patterns'].append(word)
+                
+            elif tag.startswith('J'):
+                categorized['adjective_patterns'].append(word)
+                
+            elif tag in ['VNF', 'VP', 'VNN', 'VFM']:
+                categorized['verb_patterns'].append(word)
+                
+            elif tag == 'PRP':
+                categorized['pronouns'].append(word)
+                
+            elif tag in ['FS', 'ABB', 'UH']:
+                categorized['standalone'].append(word)
+            else:
+                categorized['other'].append((word, tag))
+                
+        # Remove duplicates while preserving order
+        for category in categorized:
+            categorized[category] = list(dict.fromkeys(categorized[category]))
+            
+        return categorized
+
+
+    @staticmethod
     def extract_offensive_phrases(tokens, rationales, max_ngram=1):
 
         offensive_phrases = {}
@@ -391,7 +431,7 @@ class SOLDAugmentedDataset(SOLDDataset):
         return categorized
 
     @staticmethod
-    def categorize_offensive_phrases(offensive_single_word_list_with_pos_tags, pos_tagger):
+    def categorize_offensive_phrases_older(offensive_single_word_list_with_pos_tags, pos_tagger):
         categorized = {
             'noun_modifiers': [],      # words that modify nouns (adjectives, determiners)
             'verb_intensifiers': [],   # words that intensify verbs (adverbs, particles)
@@ -512,5 +552,67 @@ class SOLDAugmentedDataset(SOLDDataset):
     def remove_duplicates(list_of_pairs):
         seen = {}
         return list(dict.fromkeys(map(tuple, list_of_pairs)).keys())
+
+
+    def offensive_token_insertion(self, tokens, pos_tags):
+        if not tokens or not pos_tags:
+            return None, None
+            
+        modified_tokens = tokens.copy()
+        offensive_lexicon = self.categoried_offensive_phrases
+        inserted_positions = set()
+        count_of_inserted = 0
+        
+        # Equal probability for all patterns
+        INSERTION_PROB = 0.2
+        MAX_INSERTIONS = 2
+        
+        # Process trigrams
+        for i in range(len(pos_tags) - 2):
+            if count_of_inserted >= MAX_INSERTIONS:
+                break
+                
+            trigram_tags = [pos_tags[j][1] for j in range(i, i + 3)]
+            
+            # Random pattern selection with equal probability
+            if True: #random.random() < INSERTION_PROB:
+                patterns = [
+                    ('NNC', 'NNC', 'NNC', 'nnc_patterns'),
+                    ('NNP', 'NNP', 'NNP', 'nnp_patterns'),
+                    ('JJ', 'NNC', 'NNC', 'adjective_patterns'),
+                    ('NNC', 'VP', 'NNC', 'verb_patterns')
+                ]
+                
+                for pattern_tags, category in patterns:
+                    if trigram_tags == list(pattern_tags):
+                        if offensive_lexicon[category]:
+                            offensive_word = random.choice(offensive_lexicon[category])
+                            insert_position = i + 1
+                            modified_tokens.insert(insert_position, offensive_word)
+                            inserted_positions.add(insert_position)
+                            count_of_inserted += 1
+                            break
+        
+        # Add standalone offensive words at boundaries
+        if count_of_inserted < MAX_INSERTIONS and offensive_lexicon['standalone']:
+            if random.random() < INSERTION_PROB:
+                position = random.choice([0, len(modified_tokens)])
+                offensive_word = random.choice(offensive_lexicon['standalone'])
+                modified_tokens.insert(position, offensive_word)
+                inserted_positions.add(position)
+        
+        # Generate rationale tokens
+        rationale_tokens = []
+        for i, token in enumerate(modified_tokens):
+            if i in inserted_positions:
+                rationale_tokens.extend([1] * len(token.split()))
+            else:
+                rationale_tokens.extend([0] * len(token.split()))
+        
+        if ' '.join(modified_tokens).split() == tokens:
+            return None, None
+        
+        return modified_tokens, rationale_tokens
+
 
 
