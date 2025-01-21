@@ -9,6 +9,7 @@ src/evaluate/explain_results_lime.py
 __pycache__/
 *.py[cod]
 *$py.class
+final_finetune_*
 
 # C extensions
 *.so
