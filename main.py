@@ -185,7 +185,7 @@ def train_mrp(args):
     
     val_dataset = SOLDDataset(args, 'val', tokenizer=tokenizer)
     val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
-
+        
     if args.intermediate == 'mlm':
         train_dataloader.collate_fn = data_collator
         val_dataloader.collate_fn = data_collator
