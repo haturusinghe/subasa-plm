@@ -317,9 +317,14 @@ def train_mrp(args):
                         "val/masked_f1": f1[1],
                         "val/masked_classification_report": report_for_masked,
                     })
+
+                if (epoch == args.epochs-1 and (i == steps_per_epoch or i == steps_per_epoch-1)):
+                    epoch_label = epoch + 1
+                else:
+                    epoch_label = epoch
                     
                 metrics.update({
-                    "epoch": epoch,
+                    "epoch": epoch_label,
                     'step': i,
                 })
 
@@ -607,6 +612,11 @@ def train_offensive_detection(args):
                 log.write("* acc: {} | f1: {} | AUROC: {}\n\n".format(acc_avg[0], per_based_scores[0], per_based_scores[1]))
                 log.write("Classification Report:\n{}\n".format(class_report))
 
+                if (epoch == args.epochs-1 and (i == steps_per_epoch or i == steps_per_epoch-1)):
+                    epoch_label = epoch + 1
+                else:
+                    epoch_label = epoch
+
                 metrics = {
                     "train/loss": tr_loss,
                     "val/loss": loss_avg[0],
@@ -615,7 +625,7 @@ def train_offensive_detection(args):
                     "val/auroc": per_based_scores[1],
                     "val/time": time_avg,
                     "val/classification_report": class_report,
-                    "epoch": epoch,
+                    "epoch": epoch_label,
                     "step": i,
                 }
 
