@@ -248,7 +248,14 @@ class SOLDAugmentedDataset(SOLDDataset):
             filepath = os.path.join(self.output_dir, filename)
             with open(filepath, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=1)
-        
+    
+    @staticmethod
+    def shuffle_digits(number):
+        digits = list(str(number))
+        random.shuffle(digits)
+        shuffled_number = ''.join(digits)
+        return shuffled_number
+
     def generate_augmented_data(self):
         """Generate augmented offensive data from non-offensive sentences."""
         for item in self.non_offensive_data_only[:]:  # Create a copy to iterate
@@ -262,7 +269,7 @@ class SOLDAugmentedDataset(SOLDDataset):
                     augmented_sentence = ' '.join(augmented_tokens)
                 
                     new_item = {
-                        'post_id': f"{item['post_id']}_aug",
+                        'post_id': self.shuffle_digits(item['post_id']),
                         'text': augmented_sentence,
                         'tokens': augmented_sentence,
                         'rationales': str(augmented_rationale),
