@@ -547,7 +547,7 @@ def train_offensive_detection(args):
         "eps": optimizer.defaults['eps'],
         "weight_decay": optimizer.defaults['weight_decay'],
         "using_augmented_dataset": args.use_augmented_dataset,
-        "train_dataset_size": len(train_dataset)
+        "train_dataset_size": len(train_dataset),
         "steps_per_epoch": steps_per_epoch,
     })
 
