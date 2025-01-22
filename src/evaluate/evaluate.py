@@ -66,6 +66,7 @@ def evaluate(args, model, dataloader, tokenizer, emb_layer, mlb):
                 out_tensor = model(**in_tensor, labels=gts_tensor) #-100 values in the gts_tensor are a flag to ignore them during loss calculation
                 consumed_time += time.time() - start_time
             elif args.intermediate == 'mlm':
+                batch = {k: v if torch.is_tensor(v) else torch.tensor(v) for k, v in batch.items()}
                 batch = {k: v.to(args.device) for k, v in batch.items()}
                 start_time = time.time()
                 out_tensor = model(**batch)
