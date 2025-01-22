@@ -365,34 +365,49 @@ def test_mrp(args):
         },
         name= args.exp_name + '_TEST'
     )
+
+    args.wandb_run_url = wandb.run.get_url()
     set_seed(args.seed)
+
 
     tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
     tokenizer = add_tokens_to_tokenizer(args, tokenizer)
 
+    model = None
+
     if args.intermediate == 'rp':
         model = XLMRobertaForTokenClassification.from_pretrained(args.test_model_path)
         emb_layer = None
+    elif args.intermediate == 'mlm':
+        model = XLMRobertaForMaskedLM.from_pretrained(args.test_model_path)
+        emb_layer = None
     elif args.intermediate == 'mrp':
         model = XLMRobertaCustomForTCwMRP.from_pretrained(args.test_model_path)
-        hidden_size = model.config.hidden_size 
+        # Get hidden size dynamically from model config
+        hidden_size = model.config.hidden_size
         emb_layer = nn.Embedding(args.n_tk_label, hidden_size)
         emb_file_name  = args.test_model_path.split('/')[-1] + '_emb_layer_states.ckpt'
         embedding_layer_path = os.path.join(args.test_model_path, emb_file_name)
         loaded_state_dict = torch.load(embedding_layer_path)
 
-        
         emb_layer.load_state_dict(loaded_state_dict)
         model.config.output_attentions=True
 
     hidden_size = model.config.hidden_size
     args.hidden_size = hidden_size
     model.resize_token_embeddings(len(tokenizer))
+
+    data_collator = None
+    if args.intermediate == 'mlm':
+        data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=True, mlm_probability=args.mask_ratio)
     
-    test_dataset = SOLDDataset(args, 'test')
+    test_dataset = SOLDDataset(args, 'test',tokenizer=tokenizer)
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
     
     mlb = MultiLabelBinarizer()
+
+    if args.intermediate == 'mlm':
+        test_dataset.collate_fn = data_collator
     
     if args.intermediate == 'mrp':
         emb_layer.to(args.device)
