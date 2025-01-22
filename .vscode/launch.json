@@ -166,6 +166,32 @@
         },
 
         {
+            "name": "Subasa: Testing MMLM",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--pretrained_model", "xlm-roberta-base",
+                "--val_int", "2500",
+                "--patience", "3",
+                "--epochs", "1",
+                "--batch_size", "1",
+                "--seed", "66",
+                "--wandb_project", "ablataion-study-debug",
+                "--finetuning_stage", "pre",
+                "--dataset", "sold",
+                "--n_tk_label", "2",
+                "--skip_empty_rat", "True",
+                "--intermediate", "mlm",
+                "--test", "True",
+                "--mask_ratio", "0.15",
+                "--test_model_path", "xlm-roberta-base"
+            ]
+        },
+
+        {
             "name": "Data Augment",
             "type": "debugpy",
             "request": "launch",
