@@ -554,7 +554,7 @@ def train_offensive_detection(args):
     tr_losses, val_losses, val_f1s, val_accs = [], [], [], []
     for epoch in range(args.epochs):
         for i, batch in enumerate(tqdm(train_dataloader, desc="TRAINING (Phase 2 for OffensiveDetection) | Epoch: {}".format(epoch), mininterval=0.01)):  # data: (post_words, target_rat, post_id)
-            input_texts_batch, class_labels_of_texts_batch, ids_batch = batch[0], batch[1], batch[2]
+            input_texts_batch, class_labels_of_texts_batch = batch[0], batch[1]
 
             in_tensor = tokenizer(input_texts_batch, return_tensors='pt', padding=True)
             in_tensor = in_tensor.to(args.device)
