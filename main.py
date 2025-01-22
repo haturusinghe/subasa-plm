@@ -541,6 +541,16 @@ def train_offensive_detection(args):
     steps_per_epoch = ceil(len(train_dataset) / args.batch_size)
     print("Steps per epoch: ", steps_per_epoch)
 
+    wandb.config.update({
+        "optimizer": optimizer.__class__.__name__,
+        "betas": optimizer.defaults['betas'],
+        "eps": optimizer.defaults['eps'],
+        "weight_decay": optimizer.defaults['weight_decay'],
+        "using_augmented_dataset": args.use_augmented_dataset,
+        "train_dataset_size": len(train_dataset)
+        "steps_per_epoch": steps_per_epoch,
+    })
+
     tr_losses, val_losses, val_f1s, val_accs = [], [], [], []
     for epoch in range(args.epochs):
         for i, batch in enumerate(tqdm(train_dataloader, desc="TRAINING (Phase 2 for OffensiveDetection) | Epoch: {}".format(epoch), mininterval=0.01)):  # data: (post_words, target_rat, post_id)
