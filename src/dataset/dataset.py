@@ -129,7 +129,7 @@ from pathlib import Path
 class SOLDAugmentedDataset(SOLDDataset):
     # Configuration constants
     MAX_NEW_PHRASES_ALLOWED = 3
-    MAX_NEW_SENTENCES_GENERATED = 5
+    MAX_NEW_SENTENCES_GENERATED = 3
     AUGMENTATION_STRATEGIES = [
         "Noun-Based Insertions",
         "Adjective Replacement",
@@ -411,17 +411,16 @@ class SOLDAugmentedDataset(SOLDDataset):
         t1, t2, t3 = trigram
 
         strategy_handlers = {
-    "Noun-Based Insertions": self._handle_noun_insertions,
-    "Adjective Replacement": self._handle_adjective_replacement,
-    "Verb Modification": self._handle_verb_modification,
-    "Proper Noun Modification": self._handle_proper_noun_modification,
-    "Hybrid Approach": self._handle_hybrid_approach,
-    "Insert for PUNC": self._handle_punctuation_noun_pattern,
-    "Compound Verb Modification": self._handle_compound_verb_modification,
-    "Extended Verb Patterns": self._handle_verb_patterns,
-    "Case Marker Insertion": self._handle_case_marker_insertion,
-    "Proper Noun Punctuation": self.handle_proper_noun_punctuation
-}
+                "Noun-Based Insertions": self._handle_noun_insertions,
+                "Adjective Replacement": self._handle_adjective_replacement,
+                "Verb Modification": self._handle_verb_modification,
+                "Proper Noun Modification": self._handle_proper_noun_modification,
+                "Hybrid Approach": self._handle_hybrid_approach,
+                "Insert for PUNC": self._handle_punctuation_noun_pattern,
+                "Compound Verb Modification": self._handle_compound_verb_modification,
+                "Case Marker Insertion": self._handle_case_marker_insertion,
+                "Proper Noun Punctuation": self.handle_proper_noun_punctuation
+            }
 
 
         if strategy in strategy_handlers:

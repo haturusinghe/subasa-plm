@@ -112,6 +112,10 @@ def parse_args():
     parser.add_argument('--skip', default=False, help='skip data augmentation', type=bool)
 
 
+    # Use Augmented Dataset
+    parser.add_argument('--use_augmented_dataset', default=False, help='use augmented dataset', type=bool)
+
+
     return parser.parse_args()
 
 def train_mrp(args):
@@ -172,12 +176,16 @@ def train_mrp(args):
         data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=True, mlm_probability=args.mask_ratio)
 
     # Define dataloader
-    train_dataset = SOLDDataset(args, 'train', tokenizer=tokenizer) 
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    if args.use_augmented_dataset == False:
+        train_dataset = SOLDDataset(args, 'train', tokenizer=tokenizer) 
+        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    else:
+        train_dataset = SOLDAugmentedDataset(args, 'train', tokenizer=tokenizer)
+        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     
     val_dataset = SOLDDataset(args, 'val', tokenizer=tokenizer)
     val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
-
+        
     if args.intermediate == 'mlm':
         train_dataloader.collate_fn = data_collator
         val_dataloader.collate_fn = data_collator
@@ -200,6 +208,8 @@ def train_mrp(args):
         "betas": optimizer.defaults['betas'],
         "eps": optimizer.defaults['eps'],
         "weight_decay": optimizer.defaults['weight_decay'],
+        "using_augmented_dataset": args.use_augmented_dataset,
+        "train_dataset_size": len(train_dataset)
     })
 
     model.to(args.device)
@@ -509,9 +519,13 @@ def train_offensive_detection(args):
     model.resize_token_embeddings(len(tokenizer))
 
     # Define dataloader
-    train_dataset = SOLDDataset(args, 'train') 
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    
+    if args.use_augmented_dataset == False:
+        train_dataset = SOLDDataset(args, 'train') 
+        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    else:
+        train_dataset = SOLDAugmentedDataset(args, 'train')
+        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+
     val_dataset = SOLDDataset(args, 'val')
     val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
 
@@ -690,7 +704,6 @@ def test_for_hate_speech(args):
     tokenizer = add_tokens_to_tokenizer(args, tokenizer)
 
     test_dataset = SOLDDataset(args, 'test')
-
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
     model.to(args.device)
