@@ -254,7 +254,7 @@ class SOLDAugmentedDataset(SOLDDataset):
         digits = list(str(number))
         random.shuffle(digits)
         shuffled_number = ''.join(digits)
-        return shuffled_number
+        return int(shuffled_number)
 
     def generate_augmented_data(self):
         """Generate augmented offensive data from non-offensive sentences."""
