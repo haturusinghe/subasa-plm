@@ -202,15 +202,15 @@ class SOLDAugmentedDataset(SOLDDataset):
         self.categoried_offensive_phrases = self.categorize_offensive_phrases(
             self.offensive_single_word_list_with_pos_tags, # self.offensive_word_list, 
         )
-        self.categoried_offensive_phrases = self.filter_low_count_words(self.categoried_offensive_phrases)
+        self.categoried_offensive_phrases = self.filter_low_count_words(self.categoried_offensive_phrases, frequency_threshold=4)
         self._save_processed_data()
     
     @staticmethod
-    def filter_low_count_words(pos_dict):
+    def filter_low_count_words(pos_dict, frequency_threshold=2):
         """Remove words with count < 2 from POS dictionary"""
 
         filtered_data = {
-            outer_key: {inner_key: freq for inner_key, freq in inner_dict.items() if freq >= 2}
+            outer_key: {inner_key: freq for inner_key, freq in inner_dict.items() if freq >= frequency_threshold}
             for outer_key, inner_dict in pos_dict.items()
         }
 
