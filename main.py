@@ -525,6 +525,7 @@ def train_offensive_detection(args):
     else:
         train_dataset = SOLDAugmentedDataset(args, 'train')
         train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+
     val_dataset = SOLDDataset(args, 'val')
     val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
 
@@ -703,7 +704,6 @@ def test_for_hate_speech(args):
     tokenizer = add_tokens_to_tokenizer(args, tokenizer)
 
     test_dataset = SOLDDataset(args, 'test')
-
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
     model.to(args.device)
