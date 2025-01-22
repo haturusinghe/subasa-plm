@@ -262,7 +262,7 @@ class SOLDAugmentedDataset(SOLDDataset):
                     augmented_sentence = ' '.join(augmented_tokens)
                 
                     new_item = {
-                        'post_id': long(f"{item['post_id']}00"),
+                        'post_id': int(f"{item['post_id']}00"),
                         'text': augmented_sentence,
                         'tokens': augmented_sentence,
                         'rationales': str(augmented_rationale),
