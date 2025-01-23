@@ -129,7 +129,7 @@ from pathlib import Path
 class SOLDAugmentedDataset(SOLDDataset):
     # Configuration constants
     MAX_NEW_PHRASES_ALLOWED = 3
-    MAX_NEW_SENTENCES_GENERATED = 1
+    MAX_NEW_SENTENCES_GENERATED = 2
     AUGMENTATION_STRATEGIES = [
         "Noun-Based Insertions",
         "Adjective Replacement",
