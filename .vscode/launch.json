@@ -201,6 +201,34 @@
             "args": [
                 "--skip", "True",
             ]
+        },
+
+        {
+            "name": "XLMR Base Testing No Training",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "args": [
+                "--pretrained_model", "xlm-roberta-base",
+                "--wandb_p", "sold_without_mrp_to_hs_v2",
+                "--exp_save_name", "no_training_base",
+                "--test_model_path", "FacebookAI/xlm-roberta-base",
+                "--finetuning_stage", "final",
+                "--dataset", "sold",
+                "--seed", "42",
+                "--mask_ratio", "0",
+                "--test", "True",
+                "--val_int", "10000",
+                "--patience", "3",
+                "--epochs", "1",
+                "--batch_size", "1",
+                "--lr", "0.00002",
+                "--num_labels", "2",
+                "--push_to_hub", "False",
+                "--short_name", "True"
+            ]
         }
         
     ]
