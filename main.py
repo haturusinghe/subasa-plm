@@ -722,6 +722,7 @@ def test_for_hate_speech(args):
     tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
     model = XLMRobertaForSequenceClassification.from_pretrained(args.test_model_path, num_labels=args.num_labels)
     tokenizer = add_tokens_to_tokenizer(args, tokenizer)
+    model.resize_token_embeddings(len(tokenizer))
 
     test_dataset = SOLDDataset(args, 'test')
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
