@@ -319,7 +319,13 @@ def setup_experiment_name(args):
 def setup_directories(args):
     if args.test:
         # Extract experiment name from test model path
-        exp_name = args.test_model_path.split('/')[-2]
+        try:
+            exp_name = args.test_model_path.split('/')[-2]
+        except:
+            try:
+                exp_name = args.test_model_path.split('/')[-1]
+            except:
+                exp_name = args.test_model_path
         base_dir = os.path.join(args.finetuning_stage + "_finetune", exp_name)
         result_dir = os.path.join(base_dir, 'test')
     elif args.exp_save_name:
