@@ -29,18 +29,18 @@ class SOLDDataset(Dataset):
             # Sort dataset by a unique identifier to ensure consistent ordering
             self.dataset.sort(key=lambda x: x['post_id'])
             # Subset for debug
-            if args.debug:
-                subset_size = len(self.dataset) // 20
-                self.dataset = self.dataset[:subset_size]
+            # if args.debug:
+            #     subset_size = len(self.dataset) // 20
+            #     self.dataset = self.dataset[:subset_size]
         elif mode == 'train' or mode == 'val':
             with open(self.train_dataset_path, 'r') as f:
                 self.dataset = list(json.load(f))
             # Sort dataset by a unique identifier to ensure consistent ordering
             self.dataset.sort(key=lambda x: x['post_id'])
             # Subset for debug before splitting
-            if args.debug:
-                subset_size = len(self.dataset) // 20
-                self.dataset = self.dataset[:subset_size]
+            # if args.debug:
+            #     subset_size = len(self.dataset) // 20
+            #     self.dataset = self.dataset[:subset_size]
 
             #use train_test_split to split the train set into train and validation
             train_set, val_set = train_test_split(self.dataset, test_size=0.1, random_state=args.seed)
@@ -60,7 +60,7 @@ class SOLDDataset(Dataset):
         #     # this flag is to make the datasets very small to quickly run the training to see errors
         #     self.dataset = self.dataset[:100]
 
-        if args.intermediate and args.skip_empty_rat:
+        if args.skip_empty_rat:
             rm_idxs = []
             removed_items = []
             for idx, d in enumerate(self.dataset):
@@ -289,9 +289,9 @@ class SOLDAugmentedDataset(SOLDDataset):
         self.dataset = copy_of_augmented_data
 
         # Apply debug subsetting here
-        if self.args.debug:
-            subset_size = len(self.dataset) // 20
-            self.dataset = self.dataset[:subset_size]
+        # if self.args.debug:
+        #     subset_size = len(self.dataset) // 20
+        #     self.dataset = self.dataset[:subset_size]
 
         # Print length of each dataset
         self.logger.info(f"[AUGMENTED] [AUGMENTED_DATA_LEN] {len(self.augmented_data)}")
