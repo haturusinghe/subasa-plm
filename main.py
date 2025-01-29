@@ -115,6 +115,9 @@ def parse_args():
     # Use Augmented Dataset
     parser.add_argument('--use_augmented_dataset', default=False, help='use augmented dataset', type=bool)
 
+    # For debugging
+    parser.add_argument('--debug', default=False, help='debug mode', type=bool)
+
 
     return parser.parse_args()
 
