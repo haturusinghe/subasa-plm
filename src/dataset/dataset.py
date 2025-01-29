@@ -29,18 +29,18 @@ class SOLDDataset(Dataset):
             # Sort dataset by a unique identifier to ensure consistent ordering
             self.dataset.sort(key=lambda x: x['post_id'])
             # Subset for debug
-            # if args.debug:
-            #     subset_size = len(self.dataset) // 20
-            #     self.dataset = self.dataset[:subset_size]
+            if args.debug:
+                subset_size = len(self.dataset) // 20
+                self.dataset = self.dataset[:subset_size]
         elif mode == 'train' or mode == 'val':
             with open(self.train_dataset_path, 'r') as f:
                 self.dataset = list(json.load(f))
             # Sort dataset by a unique identifier to ensure consistent ordering
             self.dataset.sort(key=lambda x: x['post_id'])
             # Subset for debug before splitting
-            # if args.debug:
-            #     subset_size = len(self.dataset) // 20
-            #     self.dataset = self.dataset[:subset_size]
+            if args.debug:
+                subset_size = len(self.dataset) // 20
+                self.dataset = self.dataset[:subset_size]
 
             #use train_test_split to split the train set into train and validation
             train_set, val_set = train_test_split(self.dataset, test_size=0.1, random_state=args.seed)
@@ -73,6 +73,7 @@ class SOLDDataset(Dataset):
         
         self.mode = mode
         self.intermediate = args.intermediate
+        self.finetuning_stage = args.finetuning_stage
 
         tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
         self.tokenizer = add_tokens_to_tokenizer(args, tokenizer)
@@ -86,7 +87,7 @@ class SOLDDataset(Dataset):
         label = self.dataset[idx]['label']
         cls_num = self.label_list.index(label)
         
-        if self.intermediate == 'mrp' or self.intermediate == 'rp':
+        if self.finetuning_stage == 'pre' and (self.intermediate == 'mrp' or self.intermediate == 'rp'):
             raw_rationale_from_ds = self.dataset[idx]['rationales'] #this is as a string (of a list) in the dataset
             rationales = literal_eval(raw_rationale_from_ds) # converts the raw string to a list of integers
 
@@ -105,7 +106,7 @@ class SOLDDataset(Dataset):
             length_of_rationales = len(rationales)
             if length_of_rationales != length_of_text:
                 self.logger.error(f"[ERROR] [RAT_LEN] {length_of_rationales} [TEXT_LEN] {length_of_text} [ID] {id}")
-                sys.exit(1)
+                
 
             text_str_split_to_tokens = text.split(' ')
             final_rationale_tokens, text_after_tokenizer = get_token_rationale(self.tokenizer, copy.deepcopy(text_str_split_to_tokens), copy.deepcopy(rationales), copy.deepcopy(id))
@@ -116,11 +117,11 @@ class SOLDDataset(Dataset):
             final_rationales_str = ','.join(tmp)
             return (text, cls_num, final_rationales_str)
 
-        elif self.intermediate == 'mlm':
+        elif self.finetuning_stage == 'pre' and self.intermediate == 'mlm':
             encoding = self.tokenizer(text, return_tensors=None, padding=True)
             return encoding
 
-        elif self.intermediate == False:  # hate speech detection
+        elif self.finetuning_stage == 'final':  # hate speech detection
             return (text, cls_num, id)
         
         else:
@@ -289,9 +290,9 @@ class SOLDAugmentedDataset(SOLDDataset):
         self.dataset = copy_of_augmented_data
 
         # Apply debug subsetting here
-        # if self.args.debug:
-        #     subset_size = len(self.dataset) // 20
-        #     self.dataset = self.dataset[:subset_size]
+        if self.args.debug:
+            subset_size = len(self.dataset) // 20
+            self.dataset = self.dataset[:subset_size]
 
         # Print length of each dataset
         self.logger.info(f"[AUGMENTED] [AUGMENTED_DATA_LEN] {len(self.augmented_data)}")
