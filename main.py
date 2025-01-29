@@ -267,93 +267,94 @@ def train_mrp(args):
             loss.backward()
             optimizer.step()
             get_tr_loss.add(loss)
+        
+        if True:
+            _, val_loss, val_time, acc, f1, report, report_for_masked  = evaluate(args, model, val_dataloader, tokenizer, emb_layer, mlb) # report and report_for_masked are classification reports from sklearn
 
-            # validation model during training
-            # TODO : Make sure there is a final validation right after the end of the final epoch
-            if i == 0 or (i+1) % args.val_int == 0 or (epoch == args.epochs-1 and (i == steps_per_epoch or i == steps_per_epoch-1)):
-                _, val_loss, val_time, acc, f1, report, report_for_masked  = evaluate(args, model, val_dataloader, tokenizer, emb_layer, mlb) # report and report_for_masked are classification reports from sklearn
+            args.n_eval += 1
+            model.train()
 
-                args.n_eval += 1
-                model.train()
+            val_losses.append(val_loss)
+            tr_loss = get_tr_loss.aver()
+            tr_losses.append(tr_loss) 
+            get_tr_loss.reset()
 
-                val_losses.append(val_loss)
-                tr_loss = get_tr_loss.aver()
-                tr_losses.append(tr_loss) 
-                get_tr_loss.reset()
+            print("[Epoch {} | Val #{}]".format(epoch, args.n_eval))
+            print("* tr_loss: {}".format(tr_loss))
+            print("* val_loss: {} | val_consumed_time: {}".format(val_loss, val_time))
+            print("* acc: {} | f1: {}".format(acc[0], f1[0]))
+            if args.intermediate != 'mlm':
+                print("Classification Report:\n", report)
 
-                print("[Epoch {} | Val #{}]".format(epoch, args.n_eval))
-                print("* tr_loss: {}".format(tr_loss))
-                print("* val_loss: {} | val_consumed_time: {}".format(val_loss, val_time))
-                print("* acc: {} | f1: {}".format(acc[0], f1[0]))
-                if args.intermediate != 'mlm':
-                    print("Classification Report:\n", report)
+            if args.intermediate == 'mrp':
+                print("* acc about masked: {} | f1 about masked: {}".format(acc[1], f1[1]))
+            
+            if args.intermediate == 'mrp':
+                print("Classification Report for Masked:\n", report_for_masked)
 
-                if args.intermediate == 'mrp':
-                    print("* acc about masked: {} | f1 about masked: {}".format(acc[1], f1[1]))
-                
-                if args.intermediate == 'mrp':
-                    print("Classification Report for Masked:\n", report_for_masked)
-
-                log.write("[Epoch {} | Val #{}]\n".format(epoch, args.n_eval))
-                log.write("* tr_loss: {}\n".format(tr_loss))
-                log.write("* val_loss: {} | val_consumed_time: {}\n".format(val_loss, val_time))
-                log.write("* acc: {} | f1: {}\n".format(acc[0], f1[0]))
-                if args.intermediate == 'mrp':
-                    log.write("* acc about masked: {} | f1 about masked: {}\n".format(acc[1], f1[1]))
-                log.write("Classification Report:\n{}\n".format(report))
-                if args.intermediate == 'mrp':
-                    log.write("Classification Report for Masked:\n{}\n".format(report_for_masked))
+            log.write("[Epoch {} | Val #{}]\n".format(epoch, args.n_eval))
+            log.write("* tr_loss: {}\n".format(tr_loss))
+            log.write("* val_loss: {} | val_consumed_time: {}\n".format(val_loss, val_time))
+            log.write("* acc: {} | f1: {}\n".format(acc[0], f1[0]))
+            if args.intermediate == 'mrp':
+                log.write("* acc about masked: {} | f1 about masked: {}\n".format(acc[1], f1[1]))
+            log.write("Classification Report:\n{}\n".format(report))
+            if args.intermediate == 'mrp':
+                log.write("Classification Report for Masked:\n{}\n".format(report_for_masked))
 
 
-                # Log validation metrics
-                metrics = {
-                    "val/loss": val_loss,
-                    "val/accuracy": acc[0],
-                    "val/f1": f1[0],
-                    "val/time": val_time,
-                    "val/classification_report": report,
-                }
-                
-                if args.intermediate == 'mrp':
-                    metrics.update({
-                        "val/masked_accuracy": acc[1],
-                        "val/masked_f1": f1[1],
-                        "val/masked_classification_report": report_for_masked,
-                    })
-
-                if (epoch == args.epochs-1 and (i == steps_per_epoch or i == steps_per_epoch-1)):
-                    epoch_label = epoch + 1
-                else:
-                    epoch_label = epoch
-                    
+            # Log validation metrics
+            metrics = {
+                "val/loss": val_loss,
+                "val/accuracy": acc[0],
+                "val/f1": f1[0],
+                "val/time": val_time,
+                "val/classification_report": report,
+            }
+            
+            if args.intermediate == 'mrp':
                 metrics.update({
-                    "epoch": epoch_label,
-                    'step': i,
+                    "val/masked_accuracy": acc[1],
+                    "val/masked_f1": f1[1],
+                    "val/masked_classification_report": report_for_masked,
                 })
 
-                if args.intermediate == 'mlm':
-                    # remove classificaion metrics from the metrics dict
-                    metrics.pop("val/classification_report")
-                    metrics.update({
-                        "val/classification_report": None,
-                    })
+            if (epoch == args.epochs-1 and (i == steps_per_epoch or i == steps_per_epoch-1)):
+                epoch_label = epoch + 1
+            else:
+                epoch_label = epoch
+                
+            metrics.update({
+                "epoch": epoch_label,
+                'step': i,
+            })
 
-                wandb.log(metrics)
+            if args.intermediate == 'mlm':
+                # remove classificaion metrics from the metrics dict
+                metrics.pop("val/classification_report")
+                metrics.update({
+                    "val/classification_report": None,
+                })
 
+            wandb.log(metrics)
+
+            save_path, huggingface_repo_url = "", ""
+            if epoch > 1:
                 save_path, huggingface_repo_url = save_checkpoint(args, val_losses, emb_layer, model, metrics=metrics)
 
-                #update wandb config with the huggingface repo url and save path of checkpoint
-                wandb.config.update({
-                    "checkpoint": save_path,
-                    "huggingface_repo_url": huggingface_repo_url,
-                }, allow_val_change=True)
+            #update wandb config with the huggingface repo url and save path of checkpoint
+            wandb.config.update({
+                "checkpoint": save_path,
+                "huggingface_repo_url": huggingface_repo_url,
+            }, allow_val_change=True)
 
-                
+            
 
-            if args.waiting > args.patience:
-                print("early stopping")
-                break
-        
+        if args.waiting > args.patience:
+            print("early stopping")
+            break
+
+
         if args.waiting > args.patience:
             break
     
