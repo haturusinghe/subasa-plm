@@ -81,7 +81,7 @@ def parse_args():
     parser.add_argument('--patience', type=int, default=3)
 
     ## Pre-Finetuing Task
-    parser.add_argument('--intermediate', choices=['mrp', 'rp', 'mlm'], default=False, required=False, help='choice of an intermediate task')
+    parser.add_argument('--intermediate', choices=['mrp', 'rp', 'mlm'], required=True, help='choice of an intermediate task')
 
     ## Masked Ratioale Prediction 
     parser.add_argument('--mask_ratio', type=float, default=0.5)
