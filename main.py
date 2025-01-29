@@ -658,40 +658,55 @@ def load_model_train(args):
     print("\nLoading model and tokenizer for training...")
     tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
     tokenizer = add_tokens_to_tokenizer(args, tokenizer)
-    model = XLMRobertaForSequenceClassification.from_pretrained(args.pretrained_model, num_labels=args.num_labels)
+    
+    # Initialize target model for sequence classification
+    model = XLMRobertaForSequenceClassification.from_pretrained(
+        args.pretrained_model, 
+        num_labels=args.num_labels
+    )
+    model.resize_token_embeddings(len(tokenizer))
+
     print(f"Loaded base model: {args.pretrained_model}")
 
     print(f"\nLoading pre-finetuned model from: {args.pre_finetuned_model}")
-    if 'mlm' in args.pre_finetuned_model:
+    
+    # 1. Fix: Load MRP checkpoints with CUSTOM CLASS
+    if args.intermediate == 'mlm':
         print("Loading MLM pre-finetuned model...")
-        pre_finetuned_model = XLMRobertaForMaskedLM.from_pretrained(args.pre_finetuned_model) 
-    else:
+        pre_finetuned_model = XLMRobertaForMaskedLM.from_pretrained(args.pre_finetuned_model)
+    elif args.intermediate == 'mrp':
+        print("Loading MRP pre-finetuned model (custom)...")
+        pre_finetuned_model = XLMRobertaCustomForTCwMRP.from_pretrained(args.pre_finetuned_model)
+    else:  # RP or other token classification tasks
         print("Loading Token Classification pre-finetuned model...")
         pre_finetuned_model = XLMRobertaForTokenClassification.from_pretrained(args.pre_finetuned_model)
 
     print("\nTransferring weights from pre-finetuned model...")
-    model_state = model.state_dict()
-    finetuned_state = pre_finetuned_model.state_dict()
-
-    print(f"Base model parameters: {len(model_state)}")
-    print(f"Pre-finetuned model parameters: {len(finetuned_state)}")
     
-    # Initialize condition layer randomly 
-    filtered_pretrained_state = {}
-    transferred = 0
-    for (k1, v1), (k2, v2) in zip(model_state.items(), finetuned_state.items()):
-        if v1.size() == v2.size():
-            filtered_pretrained_state[k1] = v2
-            transferred += 1
-        else:
-            filtered_pretrained_state[k1] = v1
-            print(f"Size mismatch for {k1}, keeping original initialization")
+    # 2. Fix: Transfer ONLY encoder weights (roberta.*), ignore classification heads
+    target_state = model.state_dict()
+    source_state = pre_finetuned_model.state_dict()
 
-    model_state.update(filtered_pretrained_state)
-    model.load_state_dict(model_state, strict=True)
-
-    print(f"Successfully transferred {transferred} parameters")
-    print(f"Final model hidden size: {model.config.hidden_size}")
+    # Filter for encoder weights (shared backbone)
+    transferred_weights = {
+        k: v for k, v in source_state.items() 
+        if k.startswith("roberta.") and k in target_state
+    }
+    
+    # Update target model state with transferred encoder weights
+    target_state.update(transferred_weights)
+    
+    # 3. Fix: Load with strict=False to ignore classifier mismatch
+    model.load_state_dict(target_state, strict=False)
+    
+    # 4. Fix: Explicitly log transferred weights
+    print(f"\nTransferred {len(transferred_weights)} encoder parameters:")
+    for k in transferred_weights:
+        print(f"- {k}")
+    
+    print(f"\nTotal base model parameters: {len(target_state)}")
+    print(f"Successfully transferred encoder weights")
+    print(f"Classification head remains randomly initialized")
 
     args.hidden_size = model.config.hidden_size
 
