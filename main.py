@@ -195,7 +195,7 @@ def train_mrp(args):
 
     get_tr_loss = GetLossAverage()
     mlb = MultiLabelBinarizer()
-
+    # import torch_optimizer as optim
     if args.intermediate == 'mrp':
         optimizer = optim.RAdam(list(emb_layer.parameters())+list(model.parameters()), lr=args.lr, betas=(0.9, 0.99))
         emb_layer.to(args.device)
