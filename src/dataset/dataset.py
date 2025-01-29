@@ -1,18 +1,14 @@
-from datasets import Dataset as HFDataset
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 from ast import literal_eval
-from sinling import SinhalaTokenizer, POSTagger
+from sinling import POSTagger
 import random
 
 from transformers import XLMRobertaTokenizer
 import copy
 import os
 import json
-import numpy as np
-import emoji
 import sys
-import argparse
 
 from src.utils.helpers import add_tokens_to_tokenizer, get_token_rationale
 from src.utils.logging_utils import setup_logging
@@ -32,11 +28,19 @@ class SOLDDataset(Dataset):
                 self.dataset = list(json.load(f))
             # Sort dataset by a unique identifier to ensure consistent ordering
             self.dataset.sort(key=lambda x: x['post_id'])
+            # Subset for debug
+            if args.debug:
+                subset_size = len(self.dataset) // 20
+                self.dataset = self.dataset[:subset_size]
         elif mode == 'train' or mode == 'val':
             with open(self.train_dataset_path, 'r') as f:
                 self.dataset = list(json.load(f))
             # Sort dataset by a unique identifier to ensure consistent ordering
             self.dataset.sort(key=lambda x: x['post_id'])
+            # Subset for debug before splitting
+            if args.debug:
+                subset_size = len(self.dataset) // 20
+                self.dataset = self.dataset[:subset_size]
 
             #use train_test_split to split the train set into train and validation
             train_set, val_set = train_test_split(self.dataset, test_size=0.1, random_state=args.seed)
@@ -123,7 +127,7 @@ class SOLDDataset(Dataset):
             return ()
 
 
-from typing import List, Dict, Set, Tuple, Optional
+from typing import List, Dict, Set, Tuple
 from pathlib import Path
 
 class SOLDAugmentedDataset(SOLDDataset):
@@ -283,6 +287,11 @@ class SOLDAugmentedDataset(SOLDDataset):
         copy_of_augmented_data.extend(self.non_offensive_data_selected)
         random.shuffle(copy_of_augmented_data)
         self.dataset = copy_of_augmented_data
+
+        # Apply debug subsetting here
+        if self.args.debug:
+            subset_size = len(self.dataset) // 20
+            self.dataset = self.dataset[:subset_size]
 
         # Print length of each dataset
         self.logger.info(f"[AUGMENTED] [AUGMENTED_DATA_LEN] {len(self.augmented_data)}")
