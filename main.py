@@ -58,7 +58,7 @@ def parse_args():
     parser.add_argument('--seed', type=int, default=42, help='random seed')
 
     # DATASET
-    dataset_choices = ['sold', 'hatexplain']
+    dataset_choices = ['sold', 'suhs']
     parser.add_argument('--dataset', default='sold', choices=dataset_choices, help='a dataset to use')
 
     # EXPERIMENT FINETUNING STAGE
