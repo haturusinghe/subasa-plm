@@ -147,7 +147,7 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
         f.write(f"\n\nEpoch: {metrics['epoch']}\n")
         f.write(f"Step: {metrics['step']}\n")
     
-    if args.intermediate == 'mrp':
+    if args.finetuning_stage == 'pre' and args.intermediate == 'mrp':
         # Save the embedding layer params
         emb_file_name = file_name + '_emb_layer_states.ckpt'
         emb_save_path = os.path.join(save_path, emb_file_name)
@@ -175,7 +175,7 @@ def save_checkpoint(args, losses, embedding_layer, trained_model, tokenizer=None
             now = datetime.now()
             time_now = (now.strftime('%d%m%Y-%H%M'))
             if args.short_name:
-                repo_name = f"{args.exp_name}_ep{metrics['epoch']}"
+                repo_name = f"{args.exp_name}_{args.finetuning_stage}_ep{metrics['epoch']}"
             else:
                 repo_name = f"{args.pretrained_model}-{args.finetuning_stage}-{intermediate_label}{time_now}-{args.seed}"
 
