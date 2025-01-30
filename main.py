@@ -570,7 +570,7 @@ def train_offensive_detection(args):
     tr_losses, val_losses, val_f1s, val_accs = [], [], [], []
     for epoch in range(args.epochs):
         for i, batch in enumerate(tqdm(train_dataloader, desc="TRAINING (Phase 2 for OffensiveDetection) | Epoch: {}".format(epoch), mininterval=0.01)):  # data: (post_words, target_rat, post_id)
-            input_texts_batch, class_labels_of_texts_batch = batch[0], batch[1]
+            input_texts_batch, class_labels_of_texts_batch, txt_id = batch[0], batch[1], batch[2]
 
             in_tensor = tokenizer(input_texts_batch, return_tensors='pt', padding=True)
             in_tensor = in_tensor.to(args.device)
@@ -584,73 +584,74 @@ def train_offensive_detection(args):
             loss.backward()
             optimizer.step()
             get_tr_loss.add(loss)
+        
+        print(f"Epoch {epoch} | Training Completed")
+        if True:
+            print(f"Validating model for epoch {epoch}...")
+            _, loss_avg, acc_avg, per_based_scores, time_avg, _ , class_report, all_inputs_and_their_predictions = evaluate_for_hatespeech(args, model, val_dataloader, tokenizer)
 
-            # Validation 
-            # TODO : Make sure there is a final validation right after the end of the final epoch
-            if i == steps_per_epoch:
-                print(f"************************ ********* Epoch {epoch} | Step {i} | Validation")
+            f1_macro, auroc, wandb_roc_curve, roc_curve_values = per_based_scores
 
-            if i==0 or (i+1) % args.val_int == 0 or (epoch == args.epochs-1 and (i == steps_per_epoch or i == steps_per_epoch-1)):
-                _, loss_avg, acc_avg, per_based_scores, time_avg, _ , class_report, all_inputs_and_their_predictions = evaluate_for_hatespeech(args, model, val_dataloader, tokenizer)
+            # Unpack the ROC curve values
+            fpr, tpr, thresholds = roc_curve_values
 
-                f1_macro, auroc, wandb_roc_curve, roc_curve_values = per_based_scores
+            args.n_eval += 1
+            model.train()
 
-                # Unpack the ROC curve values
-                fpr, tpr, thresholds = roc_curve_values
+            val_losses.append(loss_avg[0])
+            val_accs.append(acc_avg[0])
+            val_f1s.append(per_based_scores[0])
 
-                args.n_eval += 1
-                model.train()
+            tr_loss = get_tr_loss.aver()
+            tr_losses.append(tr_loss) 
+            get_tr_loss.reset()
 
-                val_losses.append(loss_avg[0])
-                val_accs.append(acc_avg[0])
-                val_f1s.append(per_based_scores[0])
+            print("[Epoch {} | Val #{}]".format(epoch, args.n_eval))
+            print("* tr_loss: {}".format(tr_loss))
+            print("* val_loss: {} | val_consumed_time: {}".format(loss_avg[0], time_avg))
+            print("* acc: {} | f1: {} | AUROC: {}\n".format(acc_avg[0], per_based_scores[0], per_based_scores[1]))
+            # print classification report in terminal
+            print("Classification Report:\n", class_report)
 
-                tr_loss = get_tr_loss.aver()
-                tr_losses.append(tr_loss) 
-                get_tr_loss.reset()
+            
+            log.write("[Epoch {} | Val #{}]\n".format(epoch, args.n_eval))
+            log.write("* tr_loss: {}\n".format(tr_loss))
+            log.write("* val_loss: {} | val_consumed_time: {}\n".format(loss_avg[0], time_avg))
+            log.write("* acc: {} | f1: {} | AUROC: {}\n\n".format(acc_avg[0], per_based_scores[0], per_based_scores[1]))
+            log.write("Classification Report:\n{}\n".format(class_report))
 
-                print("[Epoch {} | Val #{}]".format(epoch, args.n_eval))
-                print("* tr_loss: {}".format(tr_loss))
-                print("* val_loss: {} | val_consumed_time: {}".format(loss_avg[0], time_avg))
-                print("* acc: {} | f1: {} | AUROC: {}\n".format(acc_avg[0], per_based_scores[0], per_based_scores[1]))
-                # print classification report in terminal
-                print("Classification Report:\n", class_report)
+            
 
-                
-                log.write("[Epoch {} | Val #{}]\n".format(epoch, args.n_eval))
-                log.write("* tr_loss: {}\n".format(tr_loss))
-                log.write("* val_loss: {} | val_consumed_time: {}\n".format(loss_avg[0], time_avg))
-                log.write("* acc: {} | f1: {} | AUROC: {}\n\n".format(acc_avg[0], per_based_scores[0], per_based_scores[1]))
-                log.write("Classification Report:\n{}\n".format(class_report))
+            metrics = {
+                "train/loss": tr_loss,
+                "val/loss": loss_avg[0],
+                "val/accuracy": acc_avg[0],
+                "val/f1": per_based_scores[0],
+                "val/auroc": per_based_scores[1],
+                "val/time": time_avg,
+                "val/classification_report": class_report,
+                "epoch": epoch + 1,
+                "step": i,
+            }
 
-                if (epoch == args.epochs-1 and (i == steps_per_epoch or i == steps_per_epoch-1)):
-                    epoch_label = epoch + 1
-                else:
-                    epoch_label = epoch
+            # Log metrics to wandb
+            wandb.log(metrics)
+            # wandb.log({"val/roc" : wandb_roc_curve})
 
-                metrics = {
-                    "train/loss": tr_loss,
-                    "val/loss": loss_avg[0],
-                    "val/accuracy": acc_avg[0],
-                    "val/f1": per_based_scores[0],
-                    "val/auroc": per_based_scores[1],
-                    "val/time": time_avg,
-                    "val/classification_report": class_report,
-                    "epoch": epoch_label,
-                    "step": i,
-                }
+            save_path, huggingface_repo_url = "", ""
+            if args.mask_ratio == 0.5 or args.mask_ratio == 0.75:
+                if epoch > 2:
+                    save_path, huggingface_repo_url = save_checkpoint(args, val_losses, None, model, metrics=metrics)
 
-                # Log metrics to wandb
-                wandb.log(metrics)
-                # wandb.log({"val/roc" : wandb_roc_curve})
+            else:
+                if  epoch == args.epochs - 1:
+                    save_path, huggingface_repo_url = save_checkpoint(args, val_losses, None, model, metrics=metrics)
 
-                save_path, huggingface_repo_url = save_checkpoint(args, val_losses, None, model, metrics=metrics)
-
-                #update wandb config with the huggingface repo url and save path of checkpoint
-                wandb.config.update({
-                    "checkpoint": save_path,
-                    "huggingface_repo_url": huggingface_repo_url,
-                }, allow_val_change=True)
+            #update wandb config with the huggingface repo url and save path of checkpoint
+            wandb.config.update({
+                "checkpoint": save_path,
+                "huggingface_repo_url": huggingface_repo_url,
+            }, allow_val_change=True)
 
             if args.waiting > args.patience:
                 print("[!] Early stopping")
