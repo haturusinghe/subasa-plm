@@ -58,7 +58,7 @@ def parse_args():
     parser.add_argument('--seed', type=int, default=42, help='random seed')
 
     # DATASET
-    dataset_choices = ['sold', 'hatexplain']
+    dataset_choices = ['sold', 'suhs']
     parser.add_argument('--dataset', default='sold', choices=dataset_choices, help='a dataset to use')
 
     # EXPERIMENT FINETUNING STAGE
@@ -81,7 +81,7 @@ def parse_args():
     parser.add_argument('--patience', type=int, default=3)
 
     ## Pre-Finetuing Task
-    parser.add_argument('--intermediate', choices=['mrp', 'rp', 'mlm'], default=False, required=False, help='choice of an intermediate task')
+    parser.add_argument('--intermediate', choices=['mrp', 'rp', 'mlm', 'none'], required=True, help='choice of an intermediate task')
 
     ## Masked Ratioale Prediction 
     parser.add_argument('--mask_ratio', type=float, default=0.5)
@@ -114,6 +114,10 @@ def parse_args():
 
     # Use Augmented Dataset
     parser.add_argument('--use_augmented_dataset', default=False, help='use augmented dataset', type=bool)
+    parser.add_argument('--max_gen_per_sample', type=int, default=1, help='maximum number of generations per sample')
+
+    # For debugging
+    parser.add_argument('--debug', default=False, help='debug mode', type=bool)
 
 
     return parser.parse_args()
@@ -140,6 +144,8 @@ def train_mrp(args):
             "val_int": args.val_int,
             "patience": args.patience,
             "skip_empty_rat": args.skip_empty_rat,
+            "is_using_augmented_dataset": args.use_augmented_dataset,
+            "AUG_max_gen_per_sample": args.max_gen_per_sample,
         },
         name=args.exp_name
     )
@@ -192,7 +198,7 @@ def train_mrp(args):
 
     get_tr_loss = GetLossAverage()
     mlb = MultiLabelBinarizer()
-
+    # import torch_optimizer as optim
     if args.intermediate == 'mrp':
         optimizer = optim.RAdam(list(emb_layer.parameters())+list(model.parameters()), lr=args.lr, betas=(0.9, 0.99))
         emb_layer.to(args.device)
@@ -264,93 +270,89 @@ def train_mrp(args):
             loss.backward()
             optimizer.step()
             get_tr_loss.add(loss)
+        
+        if True:
+            _, val_loss, val_time, acc, f1, report, report_for_masked  = evaluate(args, model, val_dataloader, tokenizer, emb_layer, mlb) # report and report_for_masked are classification reports from sklearn
 
-            # validation model during training
-            # TODO : Make sure there is a final validation right after the end of the final epoch
-            if i == 0 or (i+1) % args.val_int == 0 or (epoch == args.epochs-1 and (i == steps_per_epoch or i == steps_per_epoch-1)):
-                _, val_loss, val_time, acc, f1, report, report_for_masked  = evaluate(args, model, val_dataloader, tokenizer, emb_layer, mlb) # report and report_for_masked are classification reports from sklearn
+            args.n_eval += 1
+            model.train()
 
-                args.n_eval += 1
-                model.train()
+            val_losses.append(val_loss)
+            tr_loss = get_tr_loss.aver()
+            tr_losses.append(tr_loss) 
+            get_tr_loss.reset()
 
-                val_losses.append(val_loss)
-                tr_loss = get_tr_loss.aver()
-                tr_losses.append(tr_loss) 
-                get_tr_loss.reset()
+            print("[Epoch {} | Val #{}]".format(epoch, args.n_eval))
+            print("* tr_loss: {}".format(tr_loss))
+            print("* val_loss: {} | val_consumed_time: {}".format(val_loss, val_time))
+            print("* acc: {} | f1: {}".format(acc[0], f1[0]))
+            if args.intermediate != 'mlm':
+                print("Classification Report:\n", report)
 
-                print("[Epoch {} | Val #{}]".format(epoch, args.n_eval))
-                print("* tr_loss: {}".format(tr_loss))
-                print("* val_loss: {} | val_consumed_time: {}".format(val_loss, val_time))
-                print("* acc: {} | f1: {}".format(acc[0], f1[0]))
-                if args.intermediate != 'mlm':
-                    print("Classification Report:\n", report)
+            if args.intermediate == 'mrp':
+                print("* acc about masked: {} | f1 about masked: {}".format(acc[1], f1[1]))
+            
+            if args.intermediate == 'mrp':
+                print("Classification Report for Masked:\n", report_for_masked)
 
-                if args.intermediate == 'mrp':
-                    print("* acc about masked: {} | f1 about masked: {}".format(acc[1], f1[1]))
-                
-                if args.intermediate == 'mrp':
-                    print("Classification Report for Masked:\n", report_for_masked)
-
-                log.write("[Epoch {} | Val #{}]\n".format(epoch, args.n_eval))
-                log.write("* tr_loss: {}\n".format(tr_loss))
-                log.write("* val_loss: {} | val_consumed_time: {}\n".format(val_loss, val_time))
-                log.write("* acc: {} | f1: {}\n".format(acc[0], f1[0]))
-                if args.intermediate == 'mrp':
-                    log.write("* acc about masked: {} | f1 about masked: {}\n".format(acc[1], f1[1]))
-                log.write("Classification Report:\n{}\n".format(report))
-                if args.intermediate == 'mrp':
-                    log.write("Classification Report for Masked:\n{}\n".format(report_for_masked))
+            log.write("[Epoch {} | Val #{}]\n".format(epoch, args.n_eval))
+            log.write("* tr_loss: {}\n".format(tr_loss))
+            log.write("* val_loss: {} | val_consumed_time: {}\n".format(val_loss, val_time))
+            log.write("* acc: {} | f1: {}\n".format(acc[0], f1[0]))
+            if args.intermediate == 'mrp':
+                log.write("* acc about masked: {} | f1 about masked: {}\n".format(acc[1], f1[1]))
+            log.write("Classification Report:\n{}\n".format(report))
+            if args.intermediate == 'mrp':
+                log.write("Classification Report for Masked:\n{}\n".format(report_for_masked))
 
 
-                # Log validation metrics
-                metrics = {
-                    "val/loss": val_loss,
-                    "val/accuracy": acc[0],
-                    "val/f1": f1[0],
-                    "val/time": val_time,
-                    "val/classification_report": report,
-                }
-                
-                if args.intermediate == 'mrp':
-                    metrics.update({
-                        "val/masked_accuracy": acc[1],
-                        "val/masked_f1": f1[1],
-                        "val/masked_classification_report": report_for_masked,
-                    })
-
-                if (epoch == args.epochs-1 and (i == steps_per_epoch or i == steps_per_epoch-1)):
-                    epoch_label = epoch + 1
-                else:
-                    epoch_label = epoch
-                    
+            # Log validation metrics
+            metrics = {
+                "val/loss": val_loss,
+                "val/accuracy": acc[0],
+                "val/f1": f1[0],
+                "val/time": val_time,
+                "val/classification_report": report,
+            }
+            
+            if args.intermediate == 'mrp':
                 metrics.update({
-                    "epoch": epoch_label,
-                    'step': i,
+                    "val/masked_accuracy": acc[1],
+                    "val/masked_f1": f1[1],
+                    "val/masked_classification_report": report_for_masked,
                 })
 
-                if args.intermediate == 'mlm':
-                    # remove classificaion metrics from the metrics dict
-                    metrics.pop("val/classification_report")
-                    metrics.update({
-                        "val/classification_report": None,
-                    })
+            metrics.update({
+                "epoch": epoch + 1,
+                'step': i,
+            })
 
-                wandb.log(metrics)
+            if args.intermediate == 'mlm':
+                # remove classificaion metrics from the metrics dict
+                metrics.pop("val/classification_report")
+                metrics.update({
+                    "val/classification_report": None,
+                })
 
+            wandb.log(metrics)
+
+            save_path, huggingface_repo_url = "", ""
+            if epoch == args.epochs - 1:
                 save_path, huggingface_repo_url = save_checkpoint(args, val_losses, emb_layer, model, metrics=metrics)
 
-                #update wandb config with the huggingface repo url and save path of checkpoint
-                wandb.config.update({
-                    "checkpoint": save_path,
-                    "huggingface_repo_url": huggingface_repo_url,
-                }, allow_val_change=True)
+            #update wandb config with the huggingface repo url and save path of checkpoint
+            wandb.config.update({
+                "checkpoint": save_path,
+                "huggingface_repo_url": huggingface_repo_url,
+            }, allow_val_change=True)
 
-                
+            
 
-            if args.waiting > args.patience:
-                print("early stopping")
-                break
-        
+        if args.waiting > args.patience:
+            print("early stopping")
+            break
+
+
         if args.waiting > args.patience:
             break
     
@@ -377,6 +379,8 @@ def test_mrp(args):
             "test": args.test,
             "exp_name": args.exp_name,
             "skip_empty_rat": args.skip_empty_rat,
+            "is_using_augmented_dataset": args.use_augmented_dataset,
+            "AUG_max_gen_per_sample": args.max_gen_per_sample,
         },
         name= args.exp_name + '_TEST'
     )
@@ -511,6 +515,8 @@ def train_offensive_detection(args):
             "test": args.test,
             "explain_sold": args.explain_sold,
             "mask_ratio_of_pre_finetuned_model": args.mask_ratio,
+            "is_using_augmented_dataset": args.use_augmented_dataset,
+            "AUG_max_gen_per_sample": args.max_gen_per_sample,
         },
         name=args.exp_name + '_TRAIN'
     )
@@ -559,7 +565,7 @@ def train_offensive_detection(args):
     tr_losses, val_losses, val_f1s, val_accs = [], [], [], []
     for epoch in range(args.epochs):
         for i, batch in enumerate(tqdm(train_dataloader, desc="TRAINING (Phase 2 for OffensiveDetection) | Epoch: {}".format(epoch), mininterval=0.01)):  # data: (post_words, target_rat, post_id)
-            input_texts_batch, class_labels_of_texts_batch = batch[0], batch[1]
+            input_texts_batch, class_labels_of_texts_batch, txt_id = batch[0], batch[1], batch[2]
 
             in_tensor = tokenizer(input_texts_batch, return_tensors='pt', padding=True)
             in_tensor = in_tensor.to(args.device)
@@ -573,124 +579,138 @@ def train_offensive_detection(args):
             loss.backward()
             optimizer.step()
             get_tr_loss.add(loss)
+        
+        print(f"Epoch {epoch} | Training Completed")
+        if True:
+            print(f"Validating model for epoch {epoch}...")
+            _, loss_avg, acc_avg, per_based_scores, time_avg, _ , class_report, all_inputs_and_their_predictions = evaluate_for_hatespeech(args, model, val_dataloader, tokenizer)
 
-            # Validation 
-            # TODO : Make sure there is a final validation right after the end of the final epoch
-            if i == steps_per_epoch:
-                print(f"************************ ********* Epoch {epoch} | Step {i} | Validation")
+            f1_macro, auroc, wandb_roc_curve, roc_curve_values = per_based_scores
 
-            if i==0 or (i+1) % args.val_int == 0 or (epoch == args.epochs-1 and (i == steps_per_epoch or i == steps_per_epoch-1)):
-                _, loss_avg, acc_avg, per_based_scores, time_avg, _ , class_report, all_inputs_and_their_predictions = evaluate_for_hatespeech(args, model, val_dataloader, tokenizer)
+            # Unpack the ROC curve values
+            fpr, tpr, thresholds = roc_curve_values
 
-                f1_macro, auroc, wandb_roc_curve, roc_curve_values = per_based_scores
+            args.n_eval += 1
+            model.train()
 
-                # Unpack the ROC curve values
-                fpr, tpr, thresholds = roc_curve_values
+            val_losses.append(loss_avg[0])
+            val_accs.append(acc_avg[0])
+            val_f1s.append(per_based_scores[0])
 
-                args.n_eval += 1
-                model.train()
+            tr_loss = get_tr_loss.aver()
+            tr_losses.append(tr_loss) 
+            get_tr_loss.reset()
 
-                val_losses.append(loss_avg[0])
-                val_accs.append(acc_avg[0])
-                val_f1s.append(per_based_scores[0])
+            print("[Epoch {} | Val #{}]".format(epoch, args.n_eval))
+            print("* tr_loss: {}".format(tr_loss))
+            print("* val_loss: {} | val_consumed_time: {}".format(loss_avg[0], time_avg))
+            print("* acc: {} | f1: {} | AUROC: {}\n".format(acc_avg[0], per_based_scores[0], per_based_scores[1]))
+            # print classification report in terminal
+            print("Classification Report:\n", class_report)
 
-                tr_loss = get_tr_loss.aver()
-                tr_losses.append(tr_loss) 
-                get_tr_loss.reset()
+            
+            log.write("[Epoch {} | Val #{}]\n".format(epoch, args.n_eval))
+            log.write("* tr_loss: {}\n".format(tr_loss))
+            log.write("* val_loss: {} | val_consumed_time: {}\n".format(loss_avg[0], time_avg))
+            log.write("* acc: {} | f1: {} | AUROC: {}\n\n".format(acc_avg[0], per_based_scores[0], per_based_scores[1]))
+            log.write("Classification Report:\n{}\n".format(class_report))
 
-                print("[Epoch {} | Val #{}]".format(epoch, args.n_eval))
-                print("* tr_loss: {}".format(tr_loss))
-                print("* val_loss: {} | val_consumed_time: {}".format(loss_avg[0], time_avg))
-                print("* acc: {} | f1: {} | AUROC: {}\n".format(acc_avg[0], per_based_scores[0], per_based_scores[1]))
-                # print classification report in terminal
-                print("Classification Report:\n", class_report)
+            
 
-                
-                log.write("[Epoch {} | Val #{}]\n".format(epoch, args.n_eval))
-                log.write("* tr_loss: {}\n".format(tr_loss))
-                log.write("* val_loss: {} | val_consumed_time: {}\n".format(loss_avg[0], time_avg))
-                log.write("* acc: {} | f1: {} | AUROC: {}\n\n".format(acc_avg[0], per_based_scores[0], per_based_scores[1]))
-                log.write("Classification Report:\n{}\n".format(class_report))
+            metrics = {
+                "train/loss": tr_loss,
+                "val/loss": loss_avg[0],
+                "val/accuracy": acc_avg[0],
+                "val/f1": per_based_scores[0],
+                "val/auroc": per_based_scores[1],
+                "val/time": time_avg,
+                "val/classification_report": class_report,
+                "epoch": epoch + 1,
+                "step": i,
+            }
 
-                if (epoch == args.epochs-1 and (i == steps_per_epoch or i == steps_per_epoch-1)):
-                    epoch_label = epoch + 1
-                else:
-                    epoch_label = epoch
+            # Log metrics to wandb
+            wandb.log(metrics)
+            # wandb.log({"val/roc" : wandb_roc_curve})
 
-                metrics = {
-                    "train/loss": tr_loss,
-                    "val/loss": loss_avg[0],
-                    "val/accuracy": acc_avg[0],
-                    "val/f1": per_based_scores[0],
-                    "val/auroc": per_based_scores[1],
-                    "val/time": time_avg,
-                    "val/classification_report": class_report,
-                    "epoch": epoch_label,
-                    "step": i,
-                }
+            save_path, huggingface_repo_url = "", ""
+            if args.mask_ratio == 0.5 or args.mask_ratio == 0.75:
+                if epoch > 2:
+                    save_path, huggingface_repo_url = save_checkpoint(args, val_losses, None, model, metrics=metrics)
 
-                # Log metrics to wandb
-                wandb.log(metrics)
-                # wandb.log({"val/roc" : wandb_roc_curve})
+            else:
+                if  epoch == args.epochs - 1:
+                    save_path, huggingface_repo_url = save_checkpoint(args, val_losses, None, model, metrics=metrics)
 
-                save_path, huggingface_repo_url = save_checkpoint(args, val_losses, None, model, metrics=metrics)
+            #update wandb config with the huggingface repo url and save path of checkpoint
+            wandb.config.update({
+                "checkpoint": save_path,
+                "huggingface_repo_url": huggingface_repo_url,
+            }, allow_val_change=True)
 
-                #update wandb config with the huggingface repo url and save path of checkpoint
-                wandb.config.update({
-                    "checkpoint": save_path,
-                    "huggingface_repo_url": huggingface_repo_url,
-                }, allow_val_change=True)
-
-            if args.waiting > args.patience:
-                print("[!] Early stopping")
-                break
-        if args.waiting > args.patience:
-            break
     log.close()
     wandb.finish()
 
 
 def load_model_train(args):
+    
     print("\nLoading model and tokenizer for training...")
     tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
-    tokenizer = add_tokens_to_tokenizer(args, tokenizer)
-    model = XLMRobertaForSequenceClassification.from_pretrained(args.pretrained_model, num_labels=args.num_labels)
+    if args.intermediate != 'none':
+        tokenizer = add_tokens_to_tokenizer(args, tokenizer)
+    
+    # Initialize target model for sequence classification
+    model = XLMRobertaForSequenceClassification.from_pretrained(
+        args.pretrained_model, 
+        num_labels=args.num_labels
+    )
+    if args.intermediate != 'none':
+        model.resize_token_embeddings(len(tokenizer))
+
     print(f"Loaded base model: {args.pretrained_model}")
 
     print(f"\nLoading pre-finetuned model from: {args.pre_finetuned_model}")
-    if 'mlm' in args.pre_finetuned_model:
-        print("Loading MLM pre-finetuned model...")
-        pre_finetuned_model = XLMRobertaForMaskedLM.from_pretrained(args.pre_finetuned_model) 
-    else:
-        print("Loading Token Classification pre-finetuned model...")
-        pre_finetuned_model = XLMRobertaForTokenClassification.from_pretrained(args.pre_finetuned_model)
-
-    print("\nTransferring weights from pre-finetuned model...")
-    model_state = model.state_dict()
-    finetuned_state = pre_finetuned_model.state_dict()
-
-    print(f"Base model parameters: {len(model_state)}")
-    print(f"Pre-finetuned model parameters: {len(finetuned_state)}")
     
-    # Initialize condition layer randomly 
-    filtered_pretrained_state = {}
-    transferred = 0
-    for (k1, v1), (k2, v2) in zip(model_state.items(), finetuned_state.items()):
-        if v1.size() == v2.size():
-            filtered_pretrained_state[k1] = v2
-            transferred += 1
-        else:
-            filtered_pretrained_state[k1] = v1
-            print(f"Size mismatch for {k1}, keeping original initialization")
+    if args.intermediate != 'none':
+        # 1. Fix: Load MRP checkpoints with CUSTOM CLASS
+        if args.intermediate == 'mlm':
+            print("Loading MLM pre-finetuned model...")
+            pre_finetuned_model = XLMRobertaForMaskedLM.from_pretrained(args.pre_finetuned_model)
+        elif args.intermediate == 'mrp':
+            print("Loading MRP pre-finetuned model (custom)...")
+            pre_finetuned_model = XLMRobertaCustomForTCwMRP.from_pretrained(args.pre_finetuned_model)
+        else:  # RP or other token classification tasks
+            print("Loading Token Classification pre-finetuned model...")
+            pre_finetuned_model = XLMRobertaForTokenClassification.from_pretrained(args.pre_finetuned_model)
 
-    model_state.update(filtered_pretrained_state)
-    model.load_state_dict(model_state, strict=True)
+        print("\nTransferring weights from pre-finetuned model...")
+        
+        # 2. Fix: Transfer ONLY encoder weights (roberta.*), ignore classification heads
+        target_state = model.state_dict()
+        source_state = pre_finetuned_model.state_dict()
 
-    print(f"Successfully transferred {transferred} parameters")
-    print(f"Final model hidden size: {model.config.hidden_size}")
+        # Filter for encoder weights (shared backbone)
+        transferred_weights = {
+            k: v for k, v in source_state.items() 
+            if k.startswith("roberta.") and k in target_state
+        }
+        
+        # Update target model state with transferred encoder weights
+        target_state.update(transferred_weights)
+        
+        # 3. Fix: Load with strict=False to ignore classifier mismatch
+        model.load_state_dict(target_state, strict=False)
+        
+        # 4. Fix: Explicitly log transferred weights
+        print(f"\nTransferred {len(transferred_weights)} encoder parameters:")
+        for k in transferred_weights:
+            print(f"- {k}")
+        
+        print(f"\nTotal base model parameters: {len(target_state)}")
+        print(f"Successfully transferred encoder weights")
+        print(f"Classification head remains randomly initialized")
 
     args.hidden_size = model.config.hidden_size
-
     return model, tokenizer
 
 
@@ -715,6 +735,8 @@ def test_for_hate_speech(args):
             "test": args.test,
             "exp_name": args.exp_name,
             "explain_sold": args.explain_sold,
+            "is_using_augmented_dataset": args.use_augmented_dataset,
+            "AUG_max_gen_per_sample": args.max_gen_per_sample
         },
         name=args.exp_name + '_TEST'
     )

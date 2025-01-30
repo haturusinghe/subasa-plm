@@ -76,7 +76,7 @@ def add_pads(args, max_len, labels, masked_labels, label_reps):
     labels_pad, masked_labels_pad, label_reps_pad = [], [], []
     for label_for_each_token, label_with_masks, token_embeddings_with_masks in zip(labels, masked_labels, label_reps):
         assert len(label_for_each_token) == len(label_with_masks) == token_embeddings_with_masks.shape[0], '[!] add_pads | different lens of each ele {} {} {}'.format(len(label_for_each_token), len(label_with_masks), token_embeddings_with_masks.shape[0])
-        if args.test:
+        if False: #args.test:
             labels_pad.append(label_for_each_token)
             masked_labels_pad.append(label_with_masks)
             label_reps_pad.append(token_embeddings_with_masks)

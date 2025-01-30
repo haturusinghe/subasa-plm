@@ -1,42 +1,54 @@
-from datasets import Dataset as HFDataset
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 from ast import literal_eval
-from sinling import SinhalaTokenizer, POSTagger
+from sinling import POSTagger
 import random
 
 from transformers import XLMRobertaTokenizer
 import copy
 import os
 import json
-import numpy as np
-import emoji
 import sys
-import argparse
 
 from src.utils.helpers import add_tokens_to_tokenizer, get_token_rationale
 from src.utils.logging_utils import setup_logging
 
 class SOLDDataset(Dataset):
     def __init__(self, args, mode='train', tokenizer=None):
-        self.train_dataset_path = 'SOLD_DATASET/sold_train_split.json' 
-        self.test_dataset_path = 'SOLD_DATASET/sold_test_split.json'
+        self.sold_train_dataset_path = 'SOLD_DATASET/sold_train_split.json' 
+        self.sold_test_dataset_path = 'SOLD_DATASET/sold_test_split.json'
+
+        self.suhs_test_dataset_path = 'SUHS_DATASET/suhs_test.json'
 
         self.label_list = ['NOT' , 'OFF']
         self.label_count = [0, 0]
         self.logger = setup_logging()
         self.tokenizer = tokenizer
+        self.target_dataset = args.dataset
 
         if mode == 'test':
-            with open(self.test_dataset_path, 'r') as f:
+            if self.dataset == 'suhs':
+                dataset_path = self.suhs_test_dataset_path
+            else:
+                dataset_path = self.sold_test_dataset_path
+
+            with open(dataset_path, 'r') as f:
                 self.dataset = list(json.load(f))
             # Sort dataset by a unique identifier to ensure consistent ordering
             self.dataset.sort(key=lambda x: x['post_id'])
+            # Subset for debug
+            if args.debug:
+                subset_size = len(self.dataset) // 20
+                self.dataset = self.dataset[:subset_size]
         elif mode == 'train' or mode == 'val':
-            with open(self.train_dataset_path, 'r') as f:
+            with open(self.sold_train_dataset_path, 'r') as f:
                 self.dataset = list(json.load(f))
             # Sort dataset by a unique identifier to ensure consistent ordering
             self.dataset.sort(key=lambda x: x['post_id'])
+            # Subset for debug before splitting
+            if args.debug:
+                subset_size = len(self.dataset) // 20
+                self.dataset = self.dataset[:subset_size]
 
             #use train_test_split to split the train set into train and validation
             train_set, val_set = train_test_split(self.dataset, test_size=0.1, random_state=args.seed)
@@ -56,7 +68,7 @@ class SOLDDataset(Dataset):
         #     # this flag is to make the datasets very small to quickly run the training to see errors
         #     self.dataset = self.dataset[:100]
 
-        if args.intermediate and args.skip_empty_rat:
+        if args.skip_empty_rat:
             rm_idxs = []
             removed_items = []
             for idx, d in enumerate(self.dataset):
@@ -69,6 +81,7 @@ class SOLDDataset(Dataset):
         
         self.mode = mode
         self.intermediate = args.intermediate
+        self.finetuning_stage = args.finetuning_stage
 
         tokenizer = XLMRobertaTokenizer.from_pretrained(args.pretrained_model)
         self.tokenizer = add_tokens_to_tokenizer(args, tokenizer)
@@ -82,7 +95,7 @@ class SOLDDataset(Dataset):
         label = self.dataset[idx]['label']
         cls_num = self.label_list.index(label)
         
-        if self.intermediate == 'mrp' or self.intermediate == 'rp':
+        if self.finetuning_stage == 'pre' and (self.intermediate == 'mrp' or self.intermediate == 'rp'):
             raw_rationale_from_ds = self.dataset[idx]['rationales'] #this is as a string (of a list) in the dataset
             rationales = literal_eval(raw_rationale_from_ds) # converts the raw string to a list of integers
 
@@ -101,7 +114,7 @@ class SOLDDataset(Dataset):
             length_of_rationales = len(rationales)
             if length_of_rationales != length_of_text:
                 self.logger.error(f"[ERROR] [RAT_LEN] {length_of_rationales} [TEXT_LEN] {length_of_text} [ID] {id}")
-                sys.exit(1)
+                
 
             text_str_split_to_tokens = text.split(' ')
             final_rationale_tokens, text_after_tokenizer = get_token_rationale(self.tokenizer, copy.deepcopy(text_str_split_to_tokens), copy.deepcopy(rationales), copy.deepcopy(id))
@@ -112,24 +125,24 @@ class SOLDDataset(Dataset):
             final_rationales_str = ','.join(tmp)
             return (text, cls_num, final_rationales_str)
 
-        elif self.intermediate == 'mlm':
+        elif self.finetuning_stage == 'pre' and self.intermediate == 'mlm':
             encoding = self.tokenizer(text, return_tensors=None, padding=True)
             return encoding
 
-        elif self.intermediate == False:  # hate speech detection
+        elif self.finetuning_stage == 'final':  # hate speech detection
             return (text, cls_num, id)
         
         else:
             return ()
 
 
-from typing import List, Dict, Set, Tuple, Optional
+from typing import List, Dict, Set, Tuple
 from pathlib import Path
 
 class SOLDAugmentedDataset(SOLDDataset):
     # Configuration constants
     MAX_NEW_PHRASES_ALLOWED = 3
-    MAX_NEW_SENTENCES_GENERATED = 2
+    MAX_NEW_SENTENCES_GENERATED = 1
     AUGMENTATION_STRATEGIES = [
         "Noun-Based Insertions",
         "Adjective Replacement",
@@ -148,6 +161,7 @@ class SOLDAugmentedDataset(SOLDDataset):
         super().__init__(args, mode, tokenizer)
         self.output_dir = Path("json_dump")
         self.output_dir.mkdir(exist_ok=True)
+        self.max_new_setences_generated = args.max_new_setences_generated
         self.initialize_data_structures()
         self.load_and_process_data()
         self.process_offensive_words()
@@ -284,6 +298,11 @@ class SOLDAugmentedDataset(SOLDDataset):
         random.shuffle(copy_of_augmented_data)
         self.dataset = copy_of_augmented_data
 
+        # Apply debug subsetting here
+        if self.args.debug:
+            subset_size = len(self.dataset) // 20
+            self.dataset = self.dataset[:subset_size]
+
         # Print length of each dataset
         self.logger.info(f"[AUGMENTED] [AUGMENTED_DATA_LEN] {len(self.augmented_data)}")
         self.logger.info(f"[AUGMENTED] [NON_OFFENSIVE_DATA_SELECTED_LEN] {len(self.non_offensive_data_selected)}")
@@ -355,7 +374,7 @@ class SOLDAugmentedDataset(SOLDDataset):
         new_offensive_sentences_rationale = []
         failed_strategies: Set[str] = set()
         
-        while len(new_offensive_sentences_tokens) < self.MAX_NEW_SENTENCES_GENERATED:
+        while len(new_offensive_sentences_tokens) < self.max_new_setences_generated:
             modified_tokens = tokens.copy()
             inserted_positions: Set[int] = set()
             count_inserted = 0
