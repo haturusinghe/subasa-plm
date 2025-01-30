@@ -81,7 +81,7 @@ def parse_args():
     parser.add_argument('--patience', type=int, default=3)
 
     ## Pre-Finetuing Task
-    parser.add_argument('--intermediate', choices=['mrp', 'rp', 'mlm'], required=True, help='choice of an intermediate task')
+    parser.add_argument('--intermediate', choices=['mrp', 'rp', 'mlm', 'none'], required=True, help='choice of an intermediate task')
 
     ## Masked Ratioale Prediction 
     parser.add_argument('--mask_ratio', type=float, default=0.5)
@@ -114,6 +114,7 @@ def parse_args():
 
     # Use Augmented Dataset
     parser.add_argument('--use_augmented_dataset', default=False, help='use augmented dataset', type=bool)
+    parser.add_argument('--max_gen_per_sample', type=int, default=1, help='maximum number of generations per sample')
 
     # For debugging
     parser.add_argument('--debug', default=False, help='debug mode', type=bool)
@@ -143,6 +144,8 @@ def train_mrp(args):
             "val_int": args.val_int,
             "patience": args.patience,
             "skip_empty_rat": args.skip_empty_rat,
+            "is_using_augmented_dataset": args.use_augmented_dataset,
+            "AUG_max_gen_per_sample": args.max_gen_per_sample,
         },
         name=args.exp_name
     )
@@ -381,6 +384,8 @@ def test_mrp(args):
             "test": args.test,
             "exp_name": args.exp_name,
             "skip_empty_rat": args.skip_empty_rat,
+            "is_using_augmented_dataset": args.use_augmented_dataset,
+            "AUG_max_gen_per_sample": args.max_gen_per_sample,
         },
         name= args.exp_name + '_TEST'
     )
@@ -515,6 +520,8 @@ def train_offensive_detection(args):
             "test": args.test,
             "explain_sold": args.explain_sold,
             "mask_ratio_of_pre_finetuned_model": args.mask_ratio,
+            "is_using_augmented_dataset": args.use_augmented_dataset,
+            "AUG_max_gen_per_sample": args.max_gen_per_sample,
         },
         name=args.exp_name + '_TRAIN'
     )
@@ -734,6 +741,8 @@ def test_for_hate_speech(args):
             "test": args.test,
             "exp_name": args.exp_name,
             "explain_sold": args.explain_sold,
+            "is_using_augmented_dataset": args.use_augmented_dataset,
+            "AUG_max_gen_per_sample": args.max_gen_per_sample
         },
         name=args.exp_name + '_TEST'
     )
