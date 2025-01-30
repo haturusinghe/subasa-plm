@@ -322,13 +322,8 @@ def train_mrp(args):
                     "val/masked_classification_report": report_for_masked,
                 })
 
-            if (epoch == args.epochs-1 and (i == steps_per_epoch or i == steps_per_epoch-1)):
-                epoch_label = epoch + 1
-            else:
-                epoch_label = epoch
-                
             metrics.update({
-                "epoch": epoch_label,
+                "epoch": epoch + 1,
                 'step': i,
             })
 
@@ -342,7 +337,7 @@ def train_mrp(args):
             wandb.log(metrics)
 
             save_path, huggingface_repo_url = "", ""
-            if epoch > 1:
+            if epoch == args.epochs - 1:
                 save_path, huggingface_repo_url = save_checkpoint(args, val_losses, emb_layer, model, metrics=metrics)
 
             #update wandb config with the huggingface repo url and save path of checkpoint
@@ -653,11 +648,6 @@ def train_offensive_detection(args):
                 "huggingface_repo_url": huggingface_repo_url,
             }, allow_val_change=True)
 
-            if args.waiting > args.patience:
-                print("[!] Early stopping")
-                break
-        if args.waiting > args.patience:
-            break
     log.close()
     wandb.finish()
 
@@ -721,7 +711,6 @@ def load_model_train(args):
         print(f"Classification head remains randomly initialized")
 
     args.hidden_size = model.config.hidden_size
-
     return model, tokenizer
 
 
