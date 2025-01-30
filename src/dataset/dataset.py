@@ -15,16 +15,24 @@ from src.utils.logging_utils import setup_logging
 
 class SOLDDataset(Dataset):
     def __init__(self, args, mode='train', tokenizer=None):
-        self.train_dataset_path = 'SOLD_DATASET/sold_train_split.json' 
-        self.test_dataset_path = 'SOLD_DATASET/sold_test_split.json'
+        self.sold_train_dataset_path = 'SOLD_DATASET/sold_train_split.json' 
+        self.sold_test_dataset_path = 'SOLD_DATASET/sold_test_split.json'
+
+        self.suhs_test_dataset_path = 'SUHS_DATASET/suhs_test.json'
 
         self.label_list = ['NOT' , 'OFF']
         self.label_count = [0, 0]
         self.logger = setup_logging()
         self.tokenizer = tokenizer
+        self.target_dataset = args.dataset
 
         if mode == 'test':
-            with open(self.test_dataset_path, 'r') as f:
+            if self.dataset == 'suhs':
+                dataset_path = self.suhs_test_dataset_path
+            else:
+                dataset_path = self.sold_test_dataset_path
+
+            with open(dataset_path, 'r') as f:
                 self.dataset = list(json.load(f))
             # Sort dataset by a unique identifier to ensure consistent ordering
             self.dataset.sort(key=lambda x: x['post_id'])
@@ -33,7 +41,7 @@ class SOLDDataset(Dataset):
                 subset_size = len(self.dataset) // 20
                 self.dataset = self.dataset[:subset_size]
         elif mode == 'train' or mode == 'val':
-            with open(self.train_dataset_path, 'r') as f:
+            with open(self.sold_train_dataset_path, 'r') as f:
                 self.dataset = list(json.load(f))
             # Sort dataset by a unique identifier to ensure consistent ordering
             self.dataset.sort(key=lambda x: x['post_id'])
