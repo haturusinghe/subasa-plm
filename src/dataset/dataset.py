@@ -134,7 +134,7 @@ from pathlib import Path
 class SOLDAugmentedDataset(SOLDDataset):
     # Configuration constants
     MAX_NEW_PHRASES_ALLOWED = 3
-    MAX_NEW_SENTENCES_GENERATED = 2
+    MAX_NEW_SENTENCES_GENERATED = 1
     AUGMENTATION_STRATEGIES = [
         "Noun-Based Insertions",
         "Adjective Replacement",
@@ -153,6 +153,7 @@ class SOLDAugmentedDataset(SOLDDataset):
         super().__init__(args, mode, tokenizer)
         self.output_dir = Path("json_dump")
         self.output_dir.mkdir(exist_ok=True)
+        self.max_new_setences_generated = args.max_new_setences_generated
         self.initialize_data_structures()
         self.load_and_process_data()
         self.process_offensive_words()
@@ -365,7 +366,7 @@ class SOLDAugmentedDataset(SOLDDataset):
         new_offensive_sentences_rationale = []
         failed_strategies: Set[str] = set()
         
-        while len(new_offensive_sentences_tokens) < self.MAX_NEW_SENTENCES_GENERATED:
+        while len(new_offensive_sentences_tokens) < self.max_new_setences_generated:
             modified_tokens = tokens.copy()
             inserted_positions: Set[int] = set()
             count_inserted = 0
