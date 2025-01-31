@@ -319,15 +319,20 @@ def setup_experiment_name(args):
 def setup_directories(args):
     if args.test:
         # Extract experiment name from test model path
-        try:
-            exp_name = args.test_model_path.split('/')[-2]
-        except:
+        if "s-haturusinghe" in args.test_model_path:
+            exp_name = args.test_model_path.split('/')[-1]
+            base_dir = os.path.join(args.finetuning_stage + "_finetune", exp_name)
+            result_dir = os.path.join(base_dir, 'test')
+        else:
             try:
-                exp_name = args.test_model_path.split('/')[-1]
+                exp_name = args.test_model_path.split('/')[-2]
             except:
-                exp_name = args.test_model_path
-        base_dir = os.path.join(args.finetuning_stage + "_finetune", exp_name)
-        result_dir = os.path.join(base_dir, 'test')
+                try:
+                    exp_name = args.test_model_path.split('/')[-1]
+                except:
+                    exp_name = args.test_model_path
+            base_dir = os.path.join(args.finetuning_stage + "_finetune", exp_name)
+            result_dir = os.path.join(base_dir, 'test')
     elif args.exp_save_name:
         exp_name = args.exp_save_name
         result_dir = os.path.join(args.finetuning_stage + "_finetune", exp_name)
