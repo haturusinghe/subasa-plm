@@ -17,6 +17,7 @@ class SOLDDataset(Dataset):
     def __init__(self, args, mode='train', tokenizer=None):
         self.sold_train_dataset_path = 'SOLD_DATASET/sold_train_split.json' 
         self.sold_test_dataset_path = 'SOLD_DATASET/sold_test_split.json'
+        self.args = args
 
         self.suhs_test_dataset_path = 'SUHS_DATASET/suhs_test.json'
 
@@ -27,7 +28,7 @@ class SOLDDataset(Dataset):
         self.target_dataset = args.dataset
 
         if mode == 'test':
-            if self.dataset == 'suhs':
+            if self.target_dataset == 'suhs':
                 dataset_path = self.suhs_test_dataset_path
             else:
                 dataset_path = self.sold_test_dataset_path
@@ -161,7 +162,7 @@ class SOLDAugmentedDataset(SOLDDataset):
         super().__init__(args, mode, tokenizer)
         self.output_dir = Path("json_dump")
         self.output_dir.mkdir(exist_ok=True)
-        self.max_new_setences_generated = args.max_new_setences_generated
+        self.max_new_setences_generated = args.max_gen_per_sample
         self.initialize_data_structures()
         self.load_and_process_data()
         self.process_offensive_words()
@@ -374,7 +375,7 @@ class SOLDAugmentedDataset(SOLDDataset):
         new_offensive_sentences_rationale = []
         failed_strategies: Set[str] = set()
         
-        while len(new_offensive_sentences_tokens) < self.max_new_setences_generated:
+        while len(new_offensive_sentences_tokens) < (self.max_new_setences_generated if self.max_new_setences_generated else 1):
             modified_tokens = tokens.copy()
             inserted_positions: Set[int] = set()
             count_inserted = 0
