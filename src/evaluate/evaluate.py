@@ -183,7 +183,11 @@ def evaluate_for_hatespeech(args, model, dataloader, tokenizer):
 
             loss = out_tensor.loss
             logits = out_tensor.logits
-            attns = out_tensor.attentions[11] 
+            
+            # Get the number of layers from the model's config
+            num_layers = model.config.num_hidden_layers
+            # Use the last layer's attention (index starts at 0)
+            attns = out_tensor.attentions[num_layers - 1] 
 
             losses.append(loss.item())
 
